@@ -1,7 +1,8 @@
 from fastapi import FastAPI
-
+from app.api.auth import router as auth_router
 from app.database.base import Base
 from app.database.session import engine
+from app.api.users import router as users_router
 from app.models import (
     Provider,
     Tariff,
@@ -21,9 +22,8 @@ app = FastAPI(
     version="0.1.0",
     description="Energy tariff comparison and sales platform"
 )
-
-Base.metadata.create_all(bind=engine)
-
+app.include_router(auth_router)
+app.include_router(users_router)
 
 @app.get("/")
 def root():
