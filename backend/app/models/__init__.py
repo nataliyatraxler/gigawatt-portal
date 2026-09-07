@@ -9,3 +9,6 @@ from app.models.document import Document, DocumentType
 from app.models.commission_entry import CommissionEntry
 from app.models.monthly_settlement import MonthlySettlement
 from app.models.monthly_settlement_item import MonthlySettlementItem
+from app.models.network_operator import NetworkOperator
+from app.models.postal_code import PostalCode
+from app.models.tariff_network_operator import TariffNetworkOperator

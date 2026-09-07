@@ -13,31 +13,21 @@ from app.models import (
     Customer,
     Contract,
     User,
+    ContractStatus,
+    ContractStatusHistory,
+    Document,
+    DocumentType,
+    CommissionEntry,
+    MonthlySettlement,
+    MonthlySettlementItem,
+    NetworkOperator,
+    PostalCode,
 )
 
-# this is the Alembic Config object, which provides
-# access to the values within the .ini file in use.
 config = context.config
 
-# Interpret the config file for Python logging.
-# This line sets up loggers basically.
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
-
-# add your model's MetaData object here
-# for 'autogenerate' support
-# from myapp import mymodel
-# target_metadata = mymodel.Base.metadata
-
-from app.database.base import Base
-from app.models import (
-    Provider,
-    Tariff,
-    Commission,
-    Customer,
-    Contract,
-    User,
-)
 
 target_metadata = Base.metadata
 

@@ -1,2 +1,1 @@
-from app.models.provider import Provider
-from app.models.tariff import Tariff
+from app.models.tariff_network_operator import TariffNetworkOperator
