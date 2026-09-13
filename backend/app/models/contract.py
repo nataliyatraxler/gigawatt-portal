@@ -38,11 +38,11 @@ class Contract(Base):
     )
 
     agent_id: Mapped[int] = mapped_column(
-    ForeignKey("users.id"),
-    nullable=False,
-    index=True,
+        ForeignKey("users.id"),
+        nullable=False,
+        index=True,
     )
-    
+
     provider_id: Mapped[int] = mapped_column(
         ForeignKey("providers.id"),
         nullable=False,

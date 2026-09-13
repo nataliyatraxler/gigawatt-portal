@@ -8,6 +8,8 @@ from app.api.tariffs import router as tariffs_router
 from app.api.calculator import router as calculator_router
 from app.api.network import router as network_router
 from app.api.tariff_network import router as tariff_network_router
+from app.api.customers import router as customers_router
+from app.api.contracts import router as contracts_router
 from app.models import (
     Provider,
     Tariff,
@@ -34,6 +36,8 @@ app.include_router(tariffs_router)
 app.include_router(calculator_router)
 app.include_router(network_router)
 app.include_router(tariff_network_router)
+app.include_router(customers_router)
+app.include_router(contracts_router)
 
 @app.get("/")
 def root():
