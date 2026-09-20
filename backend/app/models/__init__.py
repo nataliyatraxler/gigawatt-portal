@@ -12,3 +12,6 @@ from app.models.monthly_settlement_item import MonthlySettlementItem
 from app.models.network_operator import NetworkOperator
 from app.models.postal_code import PostalCode
 from app.models.tariff_network_operator import TariffNetworkOperator
+from app.models.sne_tariff import SneTariff
+from app.models.network_metering_fee import NetworkMeteringFee
+from app.models.regulatory_charge import RegulatoryCharge

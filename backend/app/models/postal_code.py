@@ -24,10 +24,10 @@ class PostalCode(Base):
         nullable=False,
     )
 
-    network_operator_id: Mapped[int] = mapped_column(
-        ForeignKey("network_operators.id"),
-        nullable=False,
-    )
+    network_operator_id: Mapped[int | None] = mapped_column(
+    ForeignKey("network_operators.id"),
+    nullable=True,
+)
 
     network_operator: Mapped["NetworkOperator"] = relationship(
         back_populates="postal_codes"

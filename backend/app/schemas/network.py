@@ -22,18 +22,17 @@ class NetworkOperatorResponse(BaseModel):
         "from_attributes": True
     }
 
-
 class PostalCodeCreate(BaseModel):
     postal_code: str = Field(min_length=4, max_length=10)
     city: str = Field(min_length=1, max_length=255)
-    network_operator_id: int
+    network_operator_id: int | None = None
 
 
 class PostalCodeResponse(BaseModel):
     id: int
     postal_code: str
     city: str
-    network_operator_id: int
+    network_operator_id: int | None
 
     model_config = {
         "from_attributes": True

@@ -21,7 +21,10 @@ from app.models import (
     MonthlySettlement,
     MonthlySettlementItem,
     NetworkOperator,
+    NetworkMeteringFee,
     PostalCode,
+    SneTariff,
+    RegulatoryCharge,
 )
 
 config = context.config

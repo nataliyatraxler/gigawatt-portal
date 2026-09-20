@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
-
 from app.database.session import get_db
 from app.dependencies.auth import require_superadmin
 from app.models.user import User
@@ -18,6 +17,8 @@ from app.services.network import (
     find_postal_codes,
     list_network_operators,
     update_network_operator,
+    search_postal_codes_service,
+    search_streets_service,
 )
 
 
@@ -74,7 +75,6 @@ def update_existing_network_operator(
 ):
     return update_network_operator(db, operator_id, data)
 
-
 @router.post(
     "/postal-codes",
     response_model=PostalCodeResponse,
@@ -87,6 +87,34 @@ def create_new_postal_code(
 ):
     return create_postal_code(db, data)
 
+@router.get(
+    "/postal-codes/search",
+    response_model=list[PostalCodeResponse],
+)
+def search_postal_codes_endpoint(
+    q: str,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_superadmin),
+):
+    return search_postal_codes_service(
+        db,
+        q,
+    )
+
+@router.get(
+    "/postal-codes/{postal_code_id}/streets",
+)
+def search_streets_endpoint(
+    postal_code_id: int,
+    q: str = "",
+    db: Session = Depends(get_db),
+    _: User = Depends(require_superadmin),
+):
+    return search_streets_service(
+        db,
+        postal_code_id,
+        q,
+    )
 
 @router.get(
     "/postal-codes/{postal_code}",

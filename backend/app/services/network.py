@@ -1,6 +1,7 @@
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
-
+import csv
+from pathlib import Path
 from app.models.network_operator import NetworkOperator
 from app.models.postal_code import PostalCode
 from app.repositories.network import (
@@ -8,6 +9,7 @@ from app.repositories.network import (
     get_network_operator_by_id,
     get_network_operator_by_name,
     get_postal_codes,
+    search_postal_codes,
     save_network_operator,
     save_postal_code,
 )
@@ -129,3 +131,103 @@ def find_postal_codes(
         )
 
     return results
+def search_postal_codes_service(
+    db: Session,
+    query: str,
+) -> list[PostalCode]:
+    return search_postal_codes(
+        db,
+        query,
+    )
+
+BEV_DATA_DIR = (
+    Path(__file__).resolve().parent.parent.parent
+    / "data"
+    / "Adresse_Relationale_Tabellen_Stichtagsdaten"
+)
+
+
+def search_streets_service(
+    db: Session,
+    postal_code_id: int,
+    query: str = "",
+) -> list[dict]:
+    postal_code = (
+        db.query(PostalCode)
+        .filter(PostalCode.id == postal_code_id)
+        .first()
+    )
+
+    if not postal_code:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Postleitzahl/Ort wurde nicht gefunden.",
+        )
+
+    locality_file = BEV_DATA_DIR / "ORTSCHAFT.csv"
+    address_file = BEV_DATA_DIR / "ADRESSE.csv"
+    street_file = BEV_DATA_DIR / "STRASSE.csv"
+
+    locality_keys = set()
+
+    with open(
+        locality_file,
+        encoding="utf-8-sig",
+        newline="",
+    ) as file:
+        reader = csv.DictReader(file, delimiter=";")
+
+        for row in reader:
+            if row["ORTSNAME"] == postal_code.city:
+                locality_keys.add(
+                    (row["GKZ"], row["OKZ"])
+                )
+
+    street_codes = set()
+
+    with open(
+        address_file,
+        encoding="utf-8-sig",
+        newline="",
+    ) as file:
+        reader = csv.DictReader(file, delimiter=";")
+
+        for row in reader:
+            if (
+                row["PLZ"] == postal_code.postal_code
+                and (row["GKZ"], row["OKZ"]) in locality_keys
+            ):
+                street_codes.add(row["SKZ"])
+
+    search = query.strip().lower()
+    streets = []
+
+    with open(
+        street_file,
+        encoding="utf-8-sig",
+        newline="",
+    ) as file:
+        reader = csv.DictReader(file, delimiter=";")
+
+        for row in reader:
+            name = row["STRASSENNAME"]
+
+            if (
+                row["SKZ"] in street_codes
+                and (
+                    not search
+                    or search in name.lower()
+                )
+            ):
+                streets.append(
+                    {
+                        "street_code": row["SKZ"],
+                        "name": name,
+                    }
+                )
+
+    streets.sort(
+        key=lambda item: item["name"].lower()
+    )
+
+    return streets[:30]

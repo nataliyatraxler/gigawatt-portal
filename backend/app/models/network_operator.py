@@ -25,6 +25,17 @@ class NetworkOperator(Base):
         nullable=True,
     )
 
+    sne_network_area: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+    )
+
+    active: Mapped[bool] = mapped_column(
+        Boolean,
+        default=True,
+        nullable=False,
+    )
+
     active: Mapped[bool] = mapped_column(
         Boolean,
         default=True,
@@ -32,5 +43,9 @@ class NetworkOperator(Base):
     )
 
     postal_codes: Mapped[list["PostalCode"]] = relationship(
+        back_populates="network_operator"
+    )
+
+    metering_fees: Mapped[list["NetworkMeteringFee"]] = relationship(
         back_populates="network_operator"
     )

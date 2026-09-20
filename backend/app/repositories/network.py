@@ -1,3 +1,4 @@
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.models.network_operator import NetworkOperator
@@ -57,6 +58,15 @@ def save_postal_code(
 
     return postal_code
 
+def get_postal_code_by_id(
+    db: Session,
+    postal_code_id: int,
+) -> PostalCode | None:
+    return (
+        db.query(PostalCode)
+        .filter(PostalCode.id == postal_code_id)
+        .first()
+    )
 
 def get_postal_codes(
     db: Session,
@@ -66,5 +76,56 @@ def get_postal_codes(
         db.query(PostalCode)
         .filter(PostalCode.postal_code == postal_code)
         .order_by(PostalCode.city)
+        .all()
+    )
+
+def get_network_operators_for_postal_code(
+    db: Session,
+    postal_code: str,
+) -> list["NetworkOperator"]:
+    postal_codes = get_postal_codes(
+        db,
+        postal_code,
+    )
+
+    operator_ids = {
+        row.network_operator_id
+        for row in postal_codes
+        if row.network_operator_id is not None
+    }
+
+    if not operator_ids:
+        return []
+
+    return (
+        db.query(NetworkOperator)
+        .filter(NetworkOperator.id.in_(operator_ids))
+        .order_by(NetworkOperator.name)
+        .all()
+    )
+
+def search_postal_codes(
+    db: Session,
+    query: str,
+    limit: int = 20,
+) -> list[PostalCode]:
+    search = query.strip()
+
+    if not search:
+        return []
+
+    return (
+        db.query(PostalCode)
+        .filter(
+            or_(
+                PostalCode.postal_code.ilike(f"{search}%"),
+                PostalCode.city.ilike(f"%{search}%"),
+            )
+        )
+        .order_by(
+            PostalCode.postal_code,
+            PostalCode.city,
+        )
+        .limit(limit)
         .all()
     )

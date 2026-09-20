@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import bannerImg from '../assets/banner.png'
 
 function Dashboard({ user }) {
@@ -22,10 +23,10 @@ function Dashboard({ user }) {
 
                     <div className="header-user">♙⌄</div>
 
-                    <button className="new-contract-button">
+                    <Link to="/contracts/new" className="new-contract-button">
                         <span>＋</span>
                         Neuer Vertrag
-                    </button>
+                    </Link>
                 </div>
             </header>
 

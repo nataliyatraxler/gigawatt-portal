@@ -1,8 +1,10 @@
+from datetime import date
+
 from pydantic import BaseModel, Field
 
 
 class TariffCalculationRequest(BaseModel):
-    postal_code: str = Field(min_length=4, max_length=10)
+    postal_code_id: int = Field(gt=0)
 
     consumption_kwh: float = Field(gt=0)
 
@@ -19,6 +21,7 @@ class TariffCalculationResult(BaseModel):
 
     postal_code: str
     city: str
+
     network_operator_id: int
     network_operator_name: str
 
@@ -31,3 +34,17 @@ class TariffCalculationResult(BaseModel):
     energy_cost: float
     annual_cost_before_bonus: float
     annual_cost_after_bonus: float
+
+
+class NetworkCostCalculationRequest(BaseModel):
+    postal_code_id: int = Field(gt=0)
+
+    consumption_kwh: float = Field(gt=0)
+
+    calculation_date: date
+
+    network_level: int = Field(default=7, ge=1, le=7)
+
+    tariff_type: str = "nicht_gemessen"
+
+    meter_type: str = "standard"

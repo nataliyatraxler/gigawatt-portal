@@ -11,7 +11,7 @@ from app.calculator.sorting import sort_by_annual_cost
 from app.models.tariff import Tariff
 from app.repositories.network import (
     get_network_operator_by_id,
-    get_postal_codes,
+    get_postal_code_by_id,
 )
 from app.schemas.calculator import (
     TariffCalculationRequest,
@@ -24,24 +24,22 @@ def calculate_tariffs(
     request: TariffCalculationRequest,
 ) -> list[TariffCalculationResult]:
 
-    postal_codes = get_postal_codes(
+    postal_code = get_postal_code_by_id(
         db,
-        request.postal_code.strip(),
+        request.postal_code_id,
     )
 
-    if not postal_codes:
+    if not postal_code:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Für diese Postleitzahl wurde kein Netzbetreiber gefunden.",
+            detail="PLZ/Ort wurde nicht gefunden.",
         )
 
-    if len(postal_codes) > 1:
+    if postal_code.network_operator_id is None:
         raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Für diese Postleitzahl wurden mehrere Netzbetreiber gefunden.",
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Für diesen Ort wurde kein Netzbetreiber gefunden.",
         )
-
-    postal_code = postal_codes[0]
 
     network_operator = get_network_operator_by_id(
         db,
@@ -60,15 +58,21 @@ def calculate_tariffs(
             detail="Der Netzbetreiber ist derzeit nicht aktiv.",
         )
 
+    if not network_operator.sne_network_area:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Für den Netzbetreiber ist kein SNE-Netzgebiet hinterlegt.",
+        )
+
     query = db.query(Tariff)
 
     query = apply_tariff_filters(
-    query=query,
-    energy_type=request.energy_type,
-    customer_type=request.customer_type,
-    network_operator_id=network_operator.id,
-    provider_id=request.provider_id,
-)
+        query=query,
+        energy_type=request.energy_type,
+        customer_type=request.customer_type,
+        network_operator_id=network_operator.id,
+        provider_id=request.provider_id,
+    )
 
     tariffs = query.all()
 
@@ -102,6 +106,7 @@ def calculate_tariffs(
 
                 postal_code=postal_code.postal_code,
                 city=postal_code.city,
+
                 network_operator_id=network_operator.id,
                 network_operator_name=network_operator.name,
 
