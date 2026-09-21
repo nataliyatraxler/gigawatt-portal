@@ -36,14 +36,13 @@ class NetworkOperator(Base):
         nullable=False,
     )
 
-    active: Mapped[bool] = mapped_column(
-        Boolean,
-        default=True,
-        nullable=False,
-    )
-
     postal_codes: Mapped[list["PostalCode"]] = relationship(
         back_populates="network_operator"
+    )
+
+    coverage_rules: Mapped[list["NetworkOperatorCoverage"]] = relationship(
+        back_populates="network_operator",
+        cascade="all, delete-orphan",
     )
 
     metering_fees: Mapped[list["NetworkMeteringFee"]] = relationship(

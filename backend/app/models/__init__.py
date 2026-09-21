@@ -15,3 +15,4 @@ from app.models.tariff_network_operator import TariffNetworkOperator
 from app.models.sne_tariff import SneTariff
 from app.models.network_metering_fee import NetworkMeteringFee
 from app.models.regulatory_charge import RegulatoryCharge
+from app.models.network_operator_coverage import NetworkOperatorCoverage

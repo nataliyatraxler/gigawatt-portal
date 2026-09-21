@@ -183,6 +183,7 @@ function NewContract() {
                     },
                     body: JSON.stringify({
                         postal_code_id: selectedPostalCode.id,
+                        street_code: selectedStreet?.street_code ?? null,
                         consumption_kwh: consumptionValue,
                         calculation_date: getLocalDate(),
                         network_level: 7,

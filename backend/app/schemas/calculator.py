@@ -39,6 +39,8 @@ class TariffCalculationResult(BaseModel):
 class NetworkCostCalculationRequest(BaseModel):
     postal_code_id: int = Field(gt=0)
 
+    street_code: str | None = None
+
     consumption_kwh: float = Field(gt=0)
 
     calculation_date: date
