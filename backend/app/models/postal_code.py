@@ -24,10 +24,21 @@ class PostalCode(Base):
         nullable=False,
     )
 
+    gkz: Mapped[str | None] = mapped_column(
+        String(10),
+        index=True,
+        nullable=True,
+    )
+
+    municipality: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+    )
+
     network_operator_id: Mapped[int | None] = mapped_column(
-    ForeignKey("network_operators.id"),
-    nullable=True,
-)
+        ForeignKey("network_operators.id"),
+        nullable=True,
+    )
 
     network_operator: Mapped["NetworkOperator"] = relationship(
         back_populates="postal_codes"

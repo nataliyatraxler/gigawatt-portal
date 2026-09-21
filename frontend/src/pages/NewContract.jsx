@@ -320,7 +320,12 @@ function NewContract() {
                                             }}
                                         >
                                             <strong>{option.postal_code}</strong>
-                                            <span>{option.city}</span>
+                                            <span>
+                                                {option.city}
+                                                {option.municipality &&
+                                                    option.municipality !== option.city &&
+                                                    ` — ${option.municipality}`}
+                                            </span>
                                         </button>
                                     ))}
                                 </div>

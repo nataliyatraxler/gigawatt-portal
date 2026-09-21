@@ -22,3 +22,5 @@ node_modules/
 
 # macOS
 .DS_Store
+# Local reference data
+backend/data/

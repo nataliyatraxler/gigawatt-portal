@@ -22,6 +22,7 @@ def calculate_total_network_costs(
     year: int,
     network_area: str,
     network_operator_id: int,
+    municipality: str | None,
     network_level: int,
     tariff_type: str,
     consumption_kwh: Decimal,
@@ -47,6 +48,7 @@ def calculate_total_network_costs(
         network_level=network_level,
         tariff_type=tariff_type,
         network_area=network_area,
+        municipality=municipality,
     )
 
     net_total = (

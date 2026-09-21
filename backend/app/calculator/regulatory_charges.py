@@ -70,6 +70,7 @@ def calculate_regulatory_charges(
     network_level: int,
     tariff_type: str,
     network_area: str,
+    municipality: str | None = None,
 ) -> dict:
     electricity_tax = get_charge(
         db,
@@ -108,11 +109,18 @@ def calculate_regulatory_charges(
         network_level=network_level,
     )
 
-    usage_fee = get_charge(
-        db,
-        name="Gebrauchsabgabe",
-        calculation_date=calculation_date,
-        network_area=network_area,
+    usage_fee = (
+        db.query(RegulatoryCharge)
+        .filter(
+            RegulatoryCharge.name == "Gebrauchsabgabe",
+            RegulatoryCharge.network_area == municipality,
+            RegulatoryCharge.valid_from <= calculation_date,
+            or_(
+                RegulatoryCharge.valid_to.is_(None),
+                RegulatoryCharge.valid_to >= calculation_date,
+            ),
+        )
+        .one_or_none()
     )
 
     electricity_tax_cost = (
@@ -129,6 +137,8 @@ def calculate_regulatory_charges(
 
     usage_fee_cost = (
         network_tariff * usage_fee.value / PERCENT
+        if usage_fee
+        else Decimal("0")
     )
 
     total = (

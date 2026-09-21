@@ -25,13 +25,16 @@ class NetworkOperatorResponse(BaseModel):
 class PostalCodeCreate(BaseModel):
     postal_code: str = Field(min_length=4, max_length=10)
     city: str = Field(min_length=1, max_length=255)
+    gkz: str | None = Field(default=None, max_length=10)
+    municipality: str | None = Field(default=None, max_length=255)
     network_operator_id: int | None = None
-
 
 class PostalCodeResponse(BaseModel):
     id: int
     postal_code: str
     city: str
+    gkz: str | None
+    municipality: str | None
     network_operator_id: int | None
 
     model_config = {

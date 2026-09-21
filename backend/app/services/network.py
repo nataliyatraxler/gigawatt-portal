@@ -178,7 +178,10 @@ def search_streets_service(
         reader = csv.DictReader(file, delimiter=";")
 
         for row in reader:
-            if row["ORTSNAME"] == postal_code.city:
+            if (
+                row["GKZ"] == postal_code.gkz
+                and row["ORTSNAME"] == postal_code.city
+            ):
                 locality_keys.add(
                     (row["GKZ"], row["OKZ"])
                 )
