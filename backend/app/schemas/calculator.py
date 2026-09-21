@@ -1,4 +1,5 @@
 from datetime import date
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -42,6 +43,8 @@ class NetworkCostCalculationRequest(BaseModel):
     street_code: str | None = None
 
     consumption_kwh: float = Field(gt=0)
+
+    customer_type: Literal["privat", "gewerbe"]
 
     calculation_date: date
 

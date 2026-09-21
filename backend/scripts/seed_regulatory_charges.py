@@ -6,6 +6,17 @@ from app.models.regulatory_charge import RegulatoryCharge
 
 
 CHARGES = [
+        {
+        "name": "Elektrizitätsabgabe",
+        "calculation_type": "cent_per_kwh",
+        "value": Decimal("0.100"),
+        "network_level": None,
+        "tariff_type": None,
+        "network_area": None,
+        "customer_type": "privat",
+        "valid_from": date(2026, 1, 1),
+        "valid_to": date(2026, 12, 31),
+    },
     {
         "name": "Elektrizitätsabgabe",
         "calculation_type": "cent_per_kwh",
@@ -13,6 +24,7 @@ CHARGES = [
         "network_level": None,
         "tariff_type": None,
         "network_area": None,
+        "customer_type": "gewerbe",
         "valid_from": date(2026, 1, 1),
         "valid_to": date(2026, 12, 31),
     },
@@ -22,6 +34,7 @@ CHARGES = [
         "value": Decimal("3.796"),
         "network_level": 7,
         "tariff_type": "nicht_gemessen",
+        "customer_type": None,
         "network_area": None,
         "valid_from": date(2026, 1, 1),
         "valid_to": date(2026, 12, 31),
@@ -33,6 +46,7 @@ CHARGES = [
         "network_level": 7,
         "tariff_type": "nicht_gemessen",
         "network_area": None,
+        "customer_type": None,
         "valid_from": date(2026, 1, 1),
         "valid_to": date(2026, 12, 31),
     },
@@ -43,6 +57,7 @@ CHARGES = [
         "network_level": 7,
         "tariff_type": "nicht_gemessen",
         "network_area": None,
+        "customer_type": None,
         "valid_from": date(2026, 1, 1),
         "valid_to": date(2026, 12, 31),
     },
@@ -53,6 +68,7 @@ CHARGES = [
         "network_level": 7,
         "tariff_type": None,
         "network_area": None,
+        "customer_type": None,
         "valid_from": date(2026, 1, 1),
         "valid_to": date(2026, 12, 31),
     },
@@ -62,6 +78,7 @@ CHARGES = [
         "value": Decimal("7.000"),
         "network_level": None,
         "tariff_type": None,
+        "customer_type": None,
         "network_area": "Wien",
         "valid_from": date(2026, 3, 1),
         "valid_to": None,
@@ -89,6 +106,8 @@ def main():
                     == data["tariff_type"],
                     RegulatoryCharge.network_area
                     == data["network_area"],
+                    RegulatoryCharge.customer_type
+                    == data["customer_type"],
                     RegulatoryCharge.valid_from
                     == data["valid_from"],
                 )

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 
 function NewContract() {
     const [energyType, setEnergyType] = useState('strom')
+    const [customerType, setCustomerType] = useState('privat')
     const [postalCode, setPostalCode] = useState('')
     const [consumption, setConsumption] = useState('3500')
     const [persons, setPersons] = useState(2)
@@ -185,6 +186,7 @@ function NewContract() {
                         postal_code_id: selectedPostalCode.id,
                         street_code: selectedStreet?.street_code ?? null,
                         consumption_kwh: consumptionValue,
+                        customer_type: customerType,
                         calculation_date: getLocalDate(),
                         network_level: 7,
                         tariff_type: 'nicht_gemessen',
@@ -269,7 +271,57 @@ function NewContract() {
                             </button>
                         </div>
                     </div>
+                    <div className="form-section">
+                        <label className="form-label">Kundentyp</label>
 
+                        <div className="energy-type-buttons">
+                            <button
+                                type="button"
+                                className={`energy-type-button ${customerType === 'privat' ? 'active' : ''
+                                    }`}
+                                onClick={() => {
+                                    setCustomerType('privat')
+                                    setCalculationResult(null)
+                                    setCalculationError('')
+                                }}
+                            >
+                                <svg
+                                    className="customer-type-icon"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    aria-hidden="true"
+                                >
+                                    <path d="M3 10.8 12 3l9 7.8" />
+                                    <path d="M5.5 9.5V21h13V9.5" />
+                                    <path d="M9.5 21v-6h5v6" />
+                                </svg>
+                                Privatkunde
+                            </button>
+
+                            <button
+                                type="button"
+                                className={`energy-type-button ${customerType === 'gewerbe' ? 'active' : ''
+                                    }`}
+                                onClick={() => {
+                                    setCustomerType('gewerbe')
+                                    setCalculationResult(null)
+                                    setCalculationError('')
+                                }}
+                            >
+                                <svg
+                                    className="customer-type-icon"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    aria-hidden="true"
+                                >
+                                    <path d="M4 21V5h11v16" />
+                                    <path d="M15 9h5v12" />
+                                    <path d="M8 9h3M8 13h3M8 17h3M17 13h1M17 17h1" />
+                                </svg>
+                                Gewerbekunde
+                            </button>
+                        </div>
+                    </div>
                     <div className="tariff-form-grid">
                         <div className="form-field postal-code-field">
                             <label htmlFor="postalCode">

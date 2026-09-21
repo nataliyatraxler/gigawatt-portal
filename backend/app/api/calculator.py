@@ -55,5 +55,6 @@ def calculate_network_costs(
         consumption_kwh=Decimal(
             str(request.consumption_kwh)
         ),
+        customer_type=request.customer_type,
         meter_type=request.meter_type,
     )

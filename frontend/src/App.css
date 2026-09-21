@@ -1278,6 +1278,16 @@
   font-size: 14px;
 }
 
+.customer-type-icon {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 /* =========================
    RESPONSIVE
 ========================= */

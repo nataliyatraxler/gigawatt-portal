@@ -23,6 +23,7 @@ def get_charge(
     calculation_date: date,
     network_level: int | None = None,
     tariff_type: str | None = None,
+    customer_type: str | None = None,
     network_area: str | None = None,
 ) -> RegulatoryCharge:
     query = db.query(RegulatoryCharge).filter(
@@ -57,6 +58,10 @@ def get_charge(
                 RegulatoryCharge.network_area == network_area,
             )
         )
+    if customer_type is not None:
+        query = query.filter(
+            RegulatoryCharge.customer_type == customer_type
+        )
 
     return query.one()
 
@@ -66,6 +71,7 @@ def calculate_regulatory_charges(
     *,
     calculation_date: date,
     consumption_kwh: Decimal,
+    customer_type: str,
     network_tariff: Decimal,
     network_level: int,
     tariff_type: str,
@@ -76,6 +82,7 @@ def calculate_regulatory_charges(
         db,
         name="Elektrizitätsabgabe",
         calculation_date=calculation_date,
+        customer_type=customer_type,
     )
 
     efb_base = get_charge(

@@ -46,6 +46,11 @@ class RegulatoryCharge(Base):
         nullable=True,
     )
 
+    customer_type: Mapped[str | None] = mapped_column(
+        String(20),
+        nullable=True,
+    )
+
     valid_from: Mapped[date] = mapped_column(
         Date,
         nullable=False,
@@ -63,6 +68,7 @@ class RegulatoryCharge(Base):
             "network_level",
             "tariff_type",
             "network_area",
+            "customer_type",
             "valid_from",
             name="uq_regulatory_charge",
         ),
