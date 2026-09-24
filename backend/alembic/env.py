@@ -22,6 +22,7 @@ from app.models import (
     MonthlySettlementItem,
     NetworkOperator,
     NetworkOperatorCoverage,
+    NetworkOperatorIdentifier,
     NetworkMeteringFee,
     PostalCode,
     SneTariff,

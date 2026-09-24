@@ -234,3 +234,112 @@ def search_streets_service(
     )
 
     return streets[:30]
+
+def _normalize_energy_type(energy_type: str) -> str:
+    value = energy_type.strip().lower()
+
+    mapping = {
+        "strom": "Strom",
+        "gas": "Gas",
+    }
+
+    normalized = mapping.get(value)
+
+    if normalized is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="energy_type muss 'Strom' oder 'Gas' sein.",
+        )
+
+    return normalized
+
+
+def list_network_operator_identifiers(
+    db: Session,
+    energy_type: str,
+    bundesland: str | None = None,
+) -> list[dict]:
+    from app.repositories.network import (
+        get_network_operator_identifiers,
+    )
+
+    normalized_energy_type = _normalize_energy_type(
+        energy_type
+    )
+
+    normalized_bundesland = (
+        bundesland.strip()
+        if bundesland and bundesland.strip()
+        else None
+    )
+
+    rows = get_network_operator_identifiers(
+        db,
+        normalized_energy_type,
+        normalized_bundesland,
+    )
+
+    return [
+        {
+            "network_operator_id": operator.id,
+            "network_operator_name": operator.name,
+            "energy_type": identifier.energy_type,
+            "zpn_prefix": identifier.zpn_prefix,
+            "bundesland": identifier.bundesland,
+        }
+        for identifier, operator in rows
+    ]
+
+
+def resolve_network_operator_by_zpn(
+    db: Session,
+    energy_type: str,
+    zpn: str,
+) -> dict:
+    from app.repositories.network import (
+        get_network_operator_by_zpn_prefix,
+    )
+
+    normalized_energy_type = _normalize_energy_type(
+        energy_type
+    )
+
+    normalized_zpn = "".join(
+        zpn.strip().upper().split()
+    )
+
+    if len(normalized_zpn) < 8:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "Die Zählpunktnummer muss mindestens "
+                "8 Zeichen enthalten."
+            ),
+        )
+
+    zpn_prefix = normalized_zpn[:8]
+
+    result = get_network_operator_by_zpn_prefix(
+        db,
+        normalized_energy_type,
+        zpn_prefix,
+    )
+
+    if result is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=(
+                "Für diesen Zählpunkt wurde kein "
+                "Netzbetreiber gefunden."
+            ),
+        )
+
+    identifier, operator = result
+
+    return {
+        "network_operator_id": operator.id,
+        "network_operator_name": operator.name,
+        "energy_type": identifier.energy_type,
+        "zpn_prefix": identifier.zpn_prefix,
+        "bundesland": identifier.bundesland,
+    }

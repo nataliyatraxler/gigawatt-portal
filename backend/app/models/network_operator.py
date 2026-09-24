@@ -45,6 +45,11 @@ class NetworkOperator(Base):
         cascade="all, delete-orphan",
     )
 
+    identifiers: Mapped[list["NetworkOperatorIdentifier"]] = relationship(
+        back_populates="network_operator",
+        cascade="all, delete-orphan",
+    )
+
     metering_fees: Mapped[list["NetworkMeteringFee"]] = relationship(
         back_populates="network_operator"
     )

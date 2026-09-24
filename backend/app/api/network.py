@@ -126,3 +126,44 @@ def get_postal_code(
     _: User = Depends(require_superadmin),
 ):
     return find_postal_codes(db, postal_code)
+
+from app.api.auth import get_current_user
+from app.schemas.network import NetworkOperatorIdentifierResponse
+from app.services.network import (
+    list_network_operator_identifiers,
+    resolve_network_operator_by_zpn,
+)
+
+
+@router.get(
+    "/network-operator-identifiers",
+    response_model=list[NetworkOperatorIdentifierResponse],
+)
+def get_network_operator_identifiers(
+    energy_type: str,
+    bundesland: str | None = None,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    return list_network_operator_identifiers(
+        db,
+        energy_type,
+        bundesland,
+    )
+
+
+@router.get(
+    "/network-operator-identifiers/resolve",
+    response_model=NetworkOperatorIdentifierResponse,
+)
+def resolve_network_operator(
+    energy_type: str,
+    zpn: str,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    return resolve_network_operator_by_zpn(
+        db,
+        energy_type,
+        zpn,
+    )

@@ -40,3 +40,10 @@ class PostalCodeResponse(BaseModel):
     model_config = {
         "from_attributes": True
     }
+
+class NetworkOperatorIdentifierResponse(BaseModel):
+    network_operator_id: int
+    network_operator_name: str
+    energy_type: str
+    zpn_prefix: str
+    bundesland: str

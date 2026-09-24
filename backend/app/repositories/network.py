@@ -129,3 +129,69 @@ def search_postal_codes(
         .limit(limit)
         .all()
     )
+
+def get_network_operator_identifiers(
+    db: Session,
+    energy_type: str,
+    bundesland: str | None = None,
+):
+    from app.models.network_operator_identifier import (
+        NetworkOperatorIdentifier,
+    )
+
+    query = (
+        db.query(
+            NetworkOperatorIdentifier,
+            NetworkOperator,
+        )
+        .join(
+            NetworkOperator,
+            NetworkOperator.id
+            == NetworkOperatorIdentifier.network_operator_id,
+        )
+        .filter(
+            NetworkOperatorIdentifier.energy_type == energy_type,
+            NetworkOperatorIdentifier.active.is_(True),
+            NetworkOperator.active.is_(True),
+        )
+    )
+
+    if bundesland:
+        query = query.filter(
+            NetworkOperatorIdentifier.bundesland == bundesland
+        )
+
+    return (
+        query
+        .order_by(NetworkOperator.name)
+        .all()
+    )
+
+
+def get_network_operator_by_zpn_prefix(
+    db: Session,
+    energy_type: str,
+    zpn_prefix: str,
+):
+    from app.models.network_operator_identifier import (
+        NetworkOperatorIdentifier,
+    )
+
+    return (
+        db.query(
+            NetworkOperatorIdentifier,
+            NetworkOperator,
+        )
+        .join(
+            NetworkOperator,
+            NetworkOperator.id
+            == NetworkOperatorIdentifier.network_operator_id,
+        )
+        .filter(
+            NetworkOperatorIdentifier.energy_type == energy_type,
+            NetworkOperatorIdentifier.zpn_prefix == zpn_prefix,
+            NetworkOperatorIdentifier.active.is_(True),
+            NetworkOperator.active.is_(True),
+        )
+        .first()
+    )

@@ -47,6 +47,7 @@ def calculate_network_costs(
     return calculate_network_costs_for_address(
         db,
         postal_code_id=request.postal_code_id,
+        network_operator_id=request.network_operator_id,
         street_code=request.street_code,
         calculation_date=request.calculation_date,
         year=request.calculation_date.year,
