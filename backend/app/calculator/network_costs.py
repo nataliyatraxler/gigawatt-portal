@@ -57,6 +57,15 @@ def calculate_sne_network_costs(
         .one_or_none()
     )
 
+    if metering_fee is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=(
+                f"Für den Netzbetreiber ist kein Messentgelt "
+                f"für {year} und Zählertyp '{meter_type}' hinterlegt."
+            ),
+        )
+
     lp_cent = tariff.lp_cent or Decimal("0")
     ap_cent_kwh = tariff.ap_cent_kwh or Decimal("0")
     network_loss_cent_kwh = (
@@ -75,22 +84,13 @@ def calculate_sne_network_costs(
         consumption_kwh * network_loss_cent_kwh / CENT
     )
 
-    metering_cost = (
-        metering_fee.annual_fee
-        if metering_fee is not None
-        else None
-    )
+    metering_cost = metering_fee.annual_fee
 
-    sne_subtotal = (
+    total = (
         base_price
         + work_price
         + network_loss
-    )
-
-    total = (
-        sne_subtotal + metering_cost
-        if metering_cost is not None
-        else None
+        + metering_cost
     )
 
     return {
@@ -103,16 +103,6 @@ def calculate_sne_network_costs(
         "base_price": money(base_price),
         "work_price": money(work_price),
         "network_loss": money(network_loss),
-        "sne_subtotal": money(sne_subtotal),
-        "metering_cost": (
-            money(metering_cost)
-            if metering_cost is not None
-            else None
-        ),
-        "total_network_tariff": (
-            money(total)
-            if total is not None
-            else None
-        ),
-        "complete": metering_cost is not None,
+        "metering_cost": money(metering_cost),
+        "total_network_tariff": money(total),
     }

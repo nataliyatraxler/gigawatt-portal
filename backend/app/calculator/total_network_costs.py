@@ -53,41 +53,19 @@ def calculate_total_network_costs(
         municipality=municipality,
     )
 
-    complete = (
-        network["total_network_tariff"] is not None
-        and charges["total_charges"] is not None
+    net_total = (
+        network["total_network_tariff"]
+        + charges["total_charges"]
     )
 
-    if complete:
-        net_total = (
-            network["total_network_tariff"]
-            + charges["total_charges"]
-        )
-        vat = net_total * vat_percent / PERCENT
-        gross_total = net_total + vat
-    else:
-        net_total = None
-        vat = None
-        gross_total = None
+    vat = net_total * vat_percent / PERCENT
+    gross_total = net_total + vat
 
     return {
         "network": network,
         "charges": charges,
-        "net_total": (
-            money(net_total)
-            if net_total is not None
-            else None
-        ),
+        "net_total": money(net_total),
         "vat_percent": vat_percent,
-        "vat": (
-            money(vat)
-            if vat is not None
-            else None
-        ),
-        "gross_total": (
-            money(gross_total)
-            if gross_total is not None
-            else None
-        ),
-        "complete": complete,
+        "vat": money(vat),
+        "gross_total": money(gross_total),
     }

@@ -72,7 +72,7 @@ def calculate_regulatory_charges(
     calculation_date: date,
     consumption_kwh: Decimal,
     customer_type: str,
-    network_tariff: Decimal | None,
+    network_tariff: Decimal,
     network_level: int,
     tariff_type: str,
     network_area: str,
@@ -142,40 +142,23 @@ def calculate_regulatory_charges(
 
     renewable_flat_fee_cost = renewable_flat_fee.value
 
-    if usage_fee is None:
-        usage_fee_cost = Decimal("0")
-    elif network_tariff is None:
-        usage_fee_cost = None
-    else:
-        usage_fee_cost = (
-            network_tariff * usage_fee.value / PERCENT
-        )
-
-    known_charges = (
-        electricity_tax_cost
-        + renewable_contribution
-        + renewable_flat_fee_cost
+    usage_fee_cost = (
+        network_tariff * usage_fee.value / PERCENT
+        if usage_fee
+        else Decimal("0")
     )
 
     total = (
-        known_charges + usage_fee_cost
-        if usage_fee_cost is not None
-        else None
+        electricity_tax_cost
+        + renewable_contribution
+        + renewable_flat_fee_cost
+        + usage_fee_cost
     )
 
     return {
         "electricity_tax": money(electricity_tax_cost),
         "renewable_contribution": money(renewable_contribution),
         "renewable_flat_fee": money(renewable_flat_fee_cost),
-        "usage_fee": (
-            money(usage_fee_cost)
-            if usage_fee_cost is not None
-            else None
-        ),
-        "total_charges": (
-            money(total)
-            if total is not None
-            else None
-        ),
-        "complete": total is not None,
+        "usage_fee": money(usage_fee_cost),
+        "total_charges": money(total),
     }
