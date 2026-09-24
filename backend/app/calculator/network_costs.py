@@ -1,5 +1,6 @@
 from decimal import Decimal, ROUND_HALF_UP
 
+from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.models.network_metering_fee import NetworkMeteringFee
@@ -33,8 +34,18 @@ def calculate_sne_network_costs(
             SneTariff.network_level == network_level,
             SneTariff.tariff_type == tariff_type,
         )
-        .one()
+        .one_or_none()
     )
+
+    if tariff is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=(
+                f"Für den Netzbereich '{network_area}' ist kein "
+                f"SNE-Tarif für {year}, Netzebene {network_level} "
+                f"und Tariftyp '{tariff_type}' hinterlegt."
+            ),
+        )
 
     metering_fee = (
         db.query(NetworkMeteringFee)
@@ -43,8 +54,17 @@ def calculate_sne_network_costs(
             NetworkMeteringFee.year == year,
             NetworkMeteringFee.meter_type == meter_type,
         )
-        .one()
+        .one_or_none()
     )
+
+    if metering_fee is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=(
+                f"Für den Netzbetreiber ist kein Messentgelt "
+                f"für {year} und Zählertyp '{meter_type}' hinterlegt."
+            ),
+        )
 
     lp_cent = tariff.lp_cent or Decimal("0")
     ap_cent_kwh = tariff.ap_cent_kwh or Decimal("0")
