@@ -47,3 +47,5 @@ class NetworkOperatorIdentifierResponse(BaseModel):
     energy_type: str
     zpn_prefix: str
     bundesland: str
+    priority: int | None = None
+    standard_visible: bool | None = None

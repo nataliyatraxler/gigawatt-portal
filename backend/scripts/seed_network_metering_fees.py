@@ -12,6 +12,16 @@ METER_TYPE = "standard"
 METERING_FEES = {
     "Wiener Netze": Decimal("26.16"),
     "Netz Niederösterreich GmbH": Decimal("26.16"),
+    "Vorarlberger Energienetze GmbH": Decimal("19.20"),
+    "Energie Klagenfurt GmbH": Decimal("28.80"),
+    "Innsbrucker Kommunalbetriebe AG": Decimal("28.80"),
+    "Netz Burgenland GmbH": Decimal("28.80"),
+    "LINZ NETZ GmbH": Decimal("28.56"),
+    "Salzburg Netz GmbH": Decimal("27.60"),
+    "TINETZ-Tiroler Netze GmbH": Decimal("28.80"),
+    "KNG-Kärnten Netz GmbH": Decimal("28.80"),
+    "Energienetze Steiermark GmbH": Decimal("28.80"),
+    "Energie Ried GmbH": Decimal("28.80"),
 }
 
 

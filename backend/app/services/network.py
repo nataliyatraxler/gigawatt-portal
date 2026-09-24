@@ -279,6 +279,20 @@ def list_network_operator_identifiers(
         normalized_bundesland,
     )
 
+    if normalized_energy_type == "Strom" and normalized_bundesland:
+        return [
+            {
+                "network_operator_id": operator.id,
+                "network_operator_name": operator.name,
+                "energy_type": identifier.energy_type,
+                "zpn_prefix": identifier.zpn_prefix,
+                "bundesland": mapping.bundesland,
+                "priority": mapping.priority,
+                "standard_visible": mapping.standard_visible,
+            }
+            for identifier, operator, mapping in rows
+        ]
+
     return [
         {
             "network_operator_id": operator.id,
@@ -286,6 +300,8 @@ def list_network_operator_identifiers(
             "energy_type": identifier.energy_type,
             "zpn_prefix": identifier.zpn_prefix,
             "bundesland": identifier.bundesland,
+            "priority": None,
+            "standard_visible": None,
         }
         for identifier, operator in rows
     ]

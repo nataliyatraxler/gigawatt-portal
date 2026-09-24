@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 from app.database.session import get_db
+from app.api.auth import get_current_user
 from app.dependencies.auth import require_superadmin
 from app.models.user import User
 from app.schemas.network import (
@@ -9,6 +10,10 @@ from app.schemas.network import (
     NetworkOperatorUpdate,
     PostalCodeCreate,
     PostalCodeResponse,
+)
+from app.repositories.network import get_postal_code_by_id
+from app.services.network_operator_resolver import (
+    resolve_network_operator as resolve_network_operator_for_address,
 )
 from app.services.network import (
     create_network_operator,
@@ -36,6 +41,36 @@ def get_network_operators(
     _: User = Depends(require_superadmin),
 ):
     return list_network_operators(db)
+
+
+@router.get(
+    "/network-operators/resolve-by-address",
+    response_model=NetworkOperatorResponse | None,
+)
+def resolve_network_operator_by_address(
+    postal_code_id: int,
+    street_code: str | None = None,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    postal_code = get_postal_code_by_id(
+        db,
+        postal_code_id,
+    )
+
+    if not postal_code:
+        from fastapi import HTTPException
+
+        raise HTTPException(
+            status_code=404,
+            detail="PLZ/Ort wurde nicht gefunden.",
+        )
+
+    return resolve_network_operator_for_address(
+        db,
+        postal_code=postal_code,
+        street_code=street_code,
+    )
 
 
 @router.get(
@@ -127,7 +162,6 @@ def get_postal_code(
 ):
     return find_postal_codes(db, postal_code)
 
-from app.api.auth import get_current_user
 from app.schemas.network import NetworkOperatorIdentifierResponse
 from app.services.network import (
     list_network_operator_identifiers,

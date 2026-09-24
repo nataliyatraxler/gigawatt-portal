@@ -76,28 +76,47 @@ def resolve_network_operator(
             )
 
         if matching_rules:
-            matching_rules.sort(
-                key=lambda item: (
-                    item[0],
-                    item[1],
-                    item[2],
-                ),
-                reverse=True,
+            # Only resolve automatically when the best matching
+            # coverage level identifies exactly one network operator.
+            best_specificity = max(
+                item[0] for item in matching_rules
             )
 
-            selected_rule = matching_rules[0][3]
+            most_specific_rules = [
+                item
+                for item in matching_rules
+                if item[0] == best_specificity
+            ]
 
-            operator = (
-                db.query(NetworkOperator)
-                .filter(
-                    NetworkOperator.id
-                    == selected_rule.network_operator_id
+            best_priority = max(
+                item[1] for item in most_specific_rules
+            )
+
+            best_rules = [
+                item[3]
+                for item in most_specific_rules
+                if item[1] == best_priority
+            ]
+
+            operator_ids = {
+                rule.network_operator_id
+                for rule in best_rules
+            }
+
+            if len(operator_ids) == 1:
+                operator_id = next(iter(operator_ids))
+
+                return (
+                    db.query(NetworkOperator)
+                    .filter(
+                        NetworkOperator.id == operator_id
+                    )
+                    .first()
                 )
-                .first()
-            )
 
-            if operator:
-                return operator
+            # More than one equally valid operator:
+            # the address is ambiguous and must not be guessed.
+            return None
 
     # Legacy fallback while coverage data is being introduced.
     if postal_code.network_operator_id is not None:

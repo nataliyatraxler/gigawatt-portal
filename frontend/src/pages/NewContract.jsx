@@ -18,6 +18,16 @@ function NewContract() {
 
     const [houseNumber, setHouseNumber] = useState('')
 
+    const [networkOperatorIdentifiers, setNetworkOperatorIdentifiers] = useState([])
+    const [networkOperatorOptions, setNetworkOperatorOptions] = useState([])
+    const [selectedBundesland, setSelectedBundesland] = useState('')
+    const [selectedNetworkOperator, setSelectedNetworkOperator] = useState(null)
+    const [networkOperatorSource, setNetworkOperatorSource] = useState('')
+    const [showAllNetworkOperators, setShowAllNetworkOperators] = useState(false)
+    const [zpn, setZpn] = useState('')
+    const [networkOperatorLoading, setNetworkOperatorLoading] = useState(false)
+    const [networkOperatorError, setNetworkOperatorError] = useState('')
+
     const [calculationResult, setCalculationResult] = useState(null)
     const [calculationLoading, setCalculationLoading] = useState(false)
     const [calculationError, setCalculationError] = useState('')
@@ -115,6 +125,310 @@ function NewContract() {
         return () => controller.abort()
     }, [selectedPostalCode])
 
+    const getBundeslandFromGkz = (gkz) => {
+        const firstDigit = String(gkz || '').trim().charAt(0)
+
+        const bundeslandByGkz = {
+            1: 'Burgenland',
+            2: 'Kärnten',
+            3: 'Niederösterreich',
+            4: 'Oberösterreich',
+            5: 'Salzburg',
+            6: 'Steiermark',
+            7: 'Tirol',
+            8: 'Vorarlberg',
+            9: 'Wien',
+        }
+
+        return bundeslandByGkz[firstDigit] || ''
+    }
+
+    useEffect(() => {
+        const controller = new AbortController()
+
+        const loadNetworkOperators = async () => {
+            try {
+                setNetworkOperatorLoading(true)
+                setNetworkOperatorError('')
+
+                const token = localStorage.getItem('access_token')
+
+                const response = await fetch(
+                    `http://127.0.0.1:8000/network-operator-identifiers?energy_type=${encodeURIComponent(energyType)}`,
+                    {
+                        headers: {
+                            Authorization: `Bearer ${token}`,
+                        },
+                        signal: controller.signal,
+                    }
+                )
+
+                if (!response.ok) {
+                    throw new Error('Netzbetreiber konnten nicht geladen werden.')
+                }
+
+                const data = await response.json()
+                setNetworkOperatorIdentifiers(data)
+            } catch (error) {
+                if (error.name !== 'AbortError') {
+                    console.error(error)
+                    setNetworkOperatorIdentifiers([])
+                    setNetworkOperatorError(
+                        'Netzbetreiber konnten nicht geladen werden.'
+                    )
+                }
+            } finally {
+                setNetworkOperatorLoading(false)
+            }
+        }
+
+        setSelectedBundesland('')
+        setNetworkOperatorOptions([])
+        setSelectedNetworkOperator(null)
+        setNetworkOperatorSource('')
+        setShowAllNetworkOperators(false)
+        setZpn('')
+        loadNetworkOperators()
+
+        return () => controller.abort()
+    }, [energyType])
+
+    const bundeslaender = [
+        ...new Set(
+            networkOperatorIdentifiers
+                .map((item) => item.bundesland)
+                .filter(Boolean)
+        ),
+    ].sort((a, b) => a.localeCompare(b, 'de'))
+
+    useEffect(() => {
+        if (!selectedBundesland) {
+            setNetworkOperatorOptions([])
+            return
+        }
+
+        const controller = new AbortController()
+
+        const loadNetworkOperatorOptions = async () => {
+            try {
+                setNetworkOperatorLoading(true)
+                setNetworkOperatorError('')
+
+                const token = localStorage.getItem('access_token')
+
+                const params = new URLSearchParams({
+                    energy_type: energyType,
+                    bundesland: selectedBundesland,
+                })
+
+                const response = await fetch(
+                    `http://127.0.0.1:8000/network-operator-identifiers?${params.toString()}`,
+                    {
+                        headers: {
+                            Authorization: `Bearer ${token}`,
+                        },
+                        signal: controller.signal,
+                    }
+                )
+
+                if (!response.ok) {
+                    throw new Error(
+                        'Netzbetreiber konnten nicht geladen werden.'
+                    )
+                }
+
+                const data = await response.json()
+                setNetworkOperatorOptions(data)
+            } catch (error) {
+                if (error.name !== 'AbortError') {
+                    console.error(error)
+                    setNetworkOperatorOptions([])
+                    setNetworkOperatorError(
+                        'Netzbetreiber konnten nicht geladen werden.'
+                    )
+                }
+            } finally {
+                setNetworkOperatorLoading(false)
+            }
+        }
+
+        setShowAllNetworkOperators(false)
+        loadNetworkOperatorOptions()
+
+        return () => controller.abort()
+    }, [energyType, selectedBundesland])
+
+    const filteredNetworkOperators = networkOperatorOptions
+
+    const preferredNetworkOperators = filteredNetworkOperators.filter(
+        (item) => item.standard_visible === true
+    )
+
+    const baseVisibleNetworkOperators = showAllNetworkOperators
+        ? filteredNetworkOperators
+        : preferredNetworkOperators
+
+    const visibleNetworkOperators =
+        selectedNetworkOperator &&
+        !baseVisibleNetworkOperators.some(
+            (item) =>
+                item.network_operator_id ===
+                    selectedNetworkOperator.network_operator_id &&
+                item.zpn_prefix === selectedNetworkOperator.zpn_prefix
+        )
+            ? [selectedNetworkOperator, ...baseVisibleNetworkOperators]
+            : baseVisibleNetworkOperators
+
+    useEffect(() => {
+        if (
+            !selectedPostalCode ||
+            zpn.trim() ||
+            networkOperatorIdentifiers.length === 0 ||
+            networkOperatorSource === 'manual'
+        ) {
+            return
+        }
+
+        const controller = new AbortController()
+
+        const resolveAddressNetworkOperator = async () => {
+            try {
+                setNetworkOperatorLoading(true)
+                setNetworkOperatorError('')
+
+                const token = localStorage.getItem('access_token')
+
+                const params = new URLSearchParams({
+                    postal_code_id: String(selectedPostalCode.id),
+                })
+
+                if (selectedStreet?.street_code) {
+                    params.set(
+                        'street_code',
+                        String(selectedStreet.street_code)
+                    )
+                }
+
+                const response = await fetch(
+                    `http://127.0.0.1:8000/network-operators/resolve-by-address?${params.toString()}`,
+                    {
+                        headers: {
+                            Authorization: `Bearer ${token}`,
+                        },
+                        signal: controller.signal,
+                    }
+                )
+
+                if (!response.ok) {
+                    const data = await response.json()
+                    throw new Error(
+                        data.detail ||
+                        'Netzbetreiber konnte nicht automatisch ermittelt werden.'
+                    )
+                }
+
+                const data = await response.json()
+
+                if (!data) {
+                    setSelectedNetworkOperator(null)
+                    setNetworkOperatorSource('')
+                    setShowAllNetworkOperators(false)
+                    return
+                }
+
+                const identifier = networkOperatorIdentifiers.find(
+                    (item) =>
+                        item.network_operator_id === data.id &&
+                        item.energy_type.toLowerCase() ===
+                            energyType.toLowerCase()
+                )
+
+                if (!identifier) {
+                    throw new Error(
+                        'Der Netzbetreiber wurde gefunden, aber es fehlt das AT-Präfix.'
+                    )
+                }
+
+                setSelectedNetworkOperator(identifier)
+                setNetworkOperatorSource('address')
+                setShowAllNetworkOperators(false)
+            } catch (error) {
+                if (error.name !== 'AbortError') {
+                    console.error(error)
+                    setSelectedNetworkOperator(null)
+                    setNetworkOperatorSource('')
+                    setNetworkOperatorError(
+                        error.message ||
+                        'Netzbetreiber konnte nicht automatisch ermittelt werden.'
+                    )
+                }
+            } finally {
+                setNetworkOperatorLoading(false)
+            }
+        }
+
+        resolveAddressNetworkOperator()
+
+        return () => controller.abort()
+    }, [
+        selectedPostalCode,
+        selectedStreet,
+        energyType,
+        networkOperatorIdentifiers,
+        zpn,
+        networkOperatorSource,
+    ])
+
+    const resolveZpn = async (value) => {
+        const normalized = value.replace(/\s+/g, '').toUpperCase()
+
+        setZpn(value)
+        setSelectedNetworkOperator(null)
+        setNetworkOperatorSource('')
+        setNetworkOperatorError('')
+        setCalculationResult(null)
+        setCalculationError('')
+
+        if (normalized.length < 8) {
+            return
+        }
+
+        try {
+            setNetworkOperatorLoading(true)
+
+            const token = localStorage.getItem('access_token')
+
+            const response = await fetch(
+                `http://127.0.0.1:8000/network-operator-identifiers/resolve?energy_type=${encodeURIComponent(energyType)}&zpn=${encodeURIComponent(normalized)}`,
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                }
+            )
+
+            const data = await response.json()
+
+            if (!response.ok) {
+                throw new Error(
+                    data.detail || 'Kein Netzbetreiber für diese Zählpunktnummer gefunden.'
+                )
+            }
+
+            setSelectedNetworkOperator(data)
+            setNetworkOperatorSource('zpn')
+            setShowAllNetworkOperators(false)
+        } catch (error) {
+            console.error(error)
+            setNetworkOperatorError(
+                error.message ||
+                'Kein Netzbetreiber für diese Zählpunktnummer gefunden.'
+            )
+        } finally {
+            setNetworkOperatorLoading(false)
+        }
+    }
+
     const getLocalDate = () => {
         const now = new Date()
 
@@ -162,6 +476,13 @@ function NewContract() {
             return
         }
 
+        if (!selectedNetworkOperator) {
+            setCalculationError(
+                'Bitte wählen Sie einen Netzbetreiber oder geben Sie die Zählpunktnummer ein.'
+            )
+            return
+        }
+
         const consumptionValue = Number(consumption)
 
         if (!Number.isFinite(consumptionValue) || consumptionValue <= 0) {
@@ -185,6 +506,7 @@ function NewContract() {
                     body: JSON.stringify({
                         postal_code_id: selectedPostalCode.id,
                         street_code: selectedStreet?.street_code ?? null,
+                        network_operator_id: selectedNetworkOperator.network_operator_id,
                         consumption_kwh: consumptionValue,
                         customer_type: customerType,
                         calculation_date: getLocalDate(),
@@ -337,6 +659,12 @@ function NewContract() {
                                 onChange={(event) => {
                                     setPostalCode(event.target.value)
                                     setSelectedPostalCode(null)
+                                    setSelectedBundesland('')
+                                    setSelectedNetworkOperator(null)
+                                    setNetworkOperatorSource('')
+                                    setShowAllNetworkOperators(false)
+                                    setZpn('')
+                                    setNetworkOperatorError('')
                                     setStreet('')
                                     setSelectedStreet(null)
                                     setStreetOptions([])
@@ -364,6 +692,14 @@ function NewContract() {
                                                 setPostalCode(
                                                     `${option.postal_code} ${option.city}`
                                                 )
+                                                setSelectedBundesland(
+                                                    getBundeslandFromGkz(option.gkz)
+                                                )
+                                                setSelectedNetworkOperator(null)
+                                                setNetworkOperatorSource('')
+                                                setShowAllNetworkOperators(false)
+                                                setZpn('')
+                                                setNetworkOperatorError('')
                                                 setPostalOptions([])
                                                 setStreet('')
                                                 setSelectedStreet(null)
@@ -488,6 +824,157 @@ function NewContract() {
                                     setCalculationError('')
                                 }}
                             />
+                        </div>
+                    </div>
+
+                    <div className="form-section">
+                        <label className="form-label">Netzbetreiber</label>
+
+                        <div className="tariff-form-grid">
+                            <div className="form-field">
+                                <label htmlFor="bundesland">
+                                    Bundesland
+                                </label>
+
+                                <select
+                                    id="bundesland"
+                                    value={selectedBundesland}
+                                    disabled={Boolean(selectedPostalCode)}
+                                    onChange={(event) => {
+                                        setSelectedBundesland(event.target.value)
+                                        setSelectedNetworkOperator(null)
+                                        setZpn('')
+                                        setNetworkOperatorError('')
+                                        setCalculationResult(null)
+                                        setCalculationError('')
+                                    }}
+                                >
+                                    <option value="">
+                                        Bundesland auswählen
+                                    </option>
+
+                                    {bundeslaender.map((bundesland) => (
+                                        <option
+                                            key={bundesland}
+                                            value={bundesland}
+                                        >
+                                            {bundesland}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="form-field">
+                                <label htmlFor="networkOperator">
+                                    Netzbetreiber
+                                </label>
+
+                                <select
+                                    id="networkOperator"
+                                    disabled={!selectedBundesland}
+                                    value={
+                                        selectedNetworkOperator
+                                            ? `${selectedNetworkOperator.energy_type}:${selectedNetworkOperator.zpn_prefix}`
+                                            : ''
+                                    }
+                                    onChange={(event) => {
+                                        if (event.target.value === '__more__') {
+                                            setShowAllNetworkOperators(true)
+                                            setSelectedNetworkOperator(null)
+                                            setNetworkOperatorSource('')
+                                            setNetworkOperatorError('')
+                                            return
+                                        }
+
+                                        const selected = filteredNetworkOperators.find(
+                                            (item) =>
+                                                `${item.energy_type}:${item.zpn_prefix}` ===
+                                                event.target.value
+                                        )
+
+                                        setSelectedNetworkOperator(selected || null)
+                                        setNetworkOperatorSource(
+                                            selected ? 'manual' : ''
+                                        )
+                                        setZpn('')
+                                        setNetworkOperatorError('')
+                                        setCalculationResult(null)
+                                        setCalculationError('')
+                                    }}
+                                >
+                                    <option value="">
+                                        {selectedBundesland
+                                            ? 'Netzbetreiber auswählen'
+                                            : 'Zuerst Bundesland auswählen'}
+                                    </option>
+
+                                    {visibleNetworkOperators.map((item) => (
+                                        <option
+                                            key={`${item.energy_type}:${item.zpn_prefix}`}
+                                            value={`${item.energy_type}:${item.zpn_prefix}`}
+                                        >
+                                            {item.network_operator_name} — {item.zpn_prefix}
+                                        </option>
+                                    ))}
+
+                                    {!showAllNetworkOperators &&
+                                        filteredNetworkOperators.length >
+                                            preferredNetworkOperators.length && (
+                                            <option value="__more__">
+                                                Weitere Netzbetreiber …
+                                            </option>
+                                        )}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div className="form-field" style={{ marginTop: '16px' }}>
+                            <label htmlFor="zpn">
+                                Zählpunktnummer / erste 8 Zeichen
+                            </label>
+
+                            <input
+                                id="zpn"
+                                type="text"
+                                placeholder="z. B. AT001000"
+                                autoComplete="off"
+                                value={zpn}
+                                onChange={(event) => resolveZpn(event.target.value)}
+                            />
+
+                            {networkOperatorLoading && (
+                                <div className="postal-search-status">
+                                    Netzbetreiber wird gesucht...
+                                </div>
+                            )}
+
+                            {selectedNetworkOperator && (
+                                <div
+                                    style={{
+                                        marginTop: '10px',
+                                        fontSize: '14px',
+                                        fontWeight: 600,
+                                    }}
+                                >
+                                    {selectedNetworkOperator.network_operator_name}
+                                    {' · '}
+                                    {selectedNetworkOperator.zpn_prefix}
+                                    {' · '}
+                                    {selectedNetworkOperator.bundesland}
+                                </div>
+                            )}
+
+                            {networkOperatorError && (
+                                <div
+                                    style={{
+                                        marginTop: '10px',
+                                        color: '#a12626',
+                                        fontSize: '14px',
+                                    }}
+                                >
+                                    {networkOperatorError}
+                                </div>
+                            )}
                         </div>
                     </div>
 

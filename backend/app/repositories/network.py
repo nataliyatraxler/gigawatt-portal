@@ -138,7 +138,47 @@ def get_network_operator_identifiers(
     from app.models.network_operator_identifier import (
         NetworkOperatorIdentifier,
     )
+    from app.models.network_operator_dropdown_mapping import (
+        NetworkOperatorDropdownMapping,
+    )
 
+    # Strom dropdown logic comes from the customer-provided
+    # Dropdown_Mapping table. This is intentionally separate
+    # from NetworkOperatorIdentifier.bundesland because one
+    # operator can be shown in several Bundesländer.
+    if energy_type == "Strom" and bundesland:
+        return (
+            db.query(
+                NetworkOperatorIdentifier,
+                NetworkOperator,
+                NetworkOperatorDropdownMapping,
+            )
+            .join(
+                NetworkOperator,
+                NetworkOperator.id
+                == NetworkOperatorIdentifier.network_operator_id,
+            )
+            .join(
+                NetworkOperatorDropdownMapping,
+                NetworkOperatorDropdownMapping.network_operator_identifier_id
+                == NetworkOperatorIdentifier.id,
+            )
+            .filter(
+                NetworkOperatorIdentifier.energy_type == energy_type,
+                NetworkOperatorIdentifier.active.is_(True),
+                NetworkOperator.active.is_(True),
+                NetworkOperatorDropdownMapping.bundesland == bundesland,
+            )
+            .order_by(
+                NetworkOperatorDropdownMapping.priority,
+                NetworkOperator.name,
+            )
+            .all()
+        )
+
+    # Existing behaviour remains unchanged for:
+    # - Strom without Bundesland
+    # - Gas
     query = (
         db.query(
             NetworkOperatorIdentifier,
