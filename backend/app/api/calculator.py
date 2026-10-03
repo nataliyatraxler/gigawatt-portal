@@ -1,6 +1,7 @@
+from datetime import date
 from decimal import Decimal
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.api.auth import get_current_user
@@ -12,7 +13,8 @@ from app.calculator.gas_network_costs import (
     convert_gas_m3_to_kwh,
 )
 from app.database.session import get_db
-from app.models.user import User
+from app.models.commission import Commission
+from app.models.user import User, UserRole
 from app.schemas.calculator import (
     NetworkCostCalculationRequest,
     TariffCalculationRequest,
@@ -40,6 +42,60 @@ def calculate_available_tariffs(
         db,
         request,
     )
+
+
+
+@router.get("/tariffs/{tariff_id}/commission")
+def get_tariff_commission(
+    tariff_id: int,
+    calculation_date: date = Query(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.role not in {
+        UserRole.AGENT,
+        UserRole.SUPERADMIN,
+    }:
+        raise HTTPException(
+            status_code=403,
+            detail="Keine Berechtigung für Provisionsdaten.",
+        )
+
+    commission = (
+        db.query(Commission)
+        .filter(
+            Commission.tariff_id == tariff_id,
+            Commission.active.is_(True),
+            Commission.valid_from <= calculation_date,
+            (
+                Commission.valid_to.is_(None)
+                | (Commission.valid_to >= calculation_date)
+            ),
+        )
+        .order_by(
+            Commission.valid_from.desc(),
+            Commission.id.desc(),
+        )
+        .first()
+    )
+
+    if commission is None:
+        raise HTTPException(
+            status_code=404,
+            detail=(
+                "Für diesen Tarif ist keine gültige "
+                "Provision hinterlegt."
+            ),
+        )
+
+    return {
+        "tariff_id": tariff_id,
+        "agent_commission": float(
+            commission.agent_commission
+        ),
+        "valid_from": commission.valid_from,
+        "valid_to": commission.valid_to,
+    }
 
 
 @router.post("/network-costs")

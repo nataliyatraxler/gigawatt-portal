@@ -30,6 +30,63 @@ function NewContract() {
 
     const [calculationResult, setCalculationResult] = useState(null)
     const [tariffResults, setTariffResults] = useState([])
+    const [selectedTariffResult, setSelectedTariffResult] = useState(null)
+    const [commissionVisible, setCommissionVisible] = useState(false)
+    const [commissionData, setCommissionData] = useState(null)
+    const [commissionLoading, setCommissionLoading] = useState(false)
+    const [commissionError, setCommissionError] = useState('')
+    const [networkDetailsOpen, setNetworkDetailsOpen] = useState(false)
+    const [tariffDocumentsOpen, setTariffDocumentsOpen] = useState(false)
+    const [tariffDocuments, setTariffDocuments] = useState([])
+    const [tariffDocumentsLoading, setTariffDocumentsLoading] = useState(false)
+    const [tariffDocumentsError, setTariffDocumentsError] = useState('')
+
+    async function toggleTariffCommission() {
+        if (commissionVisible) {
+            setCommissionVisible(false)
+            return
+        }
+
+        setCommissionVisible(true)
+
+        if (commissionData) {
+            return
+        }
+
+        setCommissionLoading(true)
+        setCommissionError('')
+
+        try {
+            const token = localStorage.getItem('access_token')
+            const calculationDate = getLocalDate()
+
+            const response = await fetch(
+                `http://127.0.0.1:8000/calculator/tariffs/${selectedTariffResult.tariff_id}/commission?calculation_date=${encodeURIComponent(calculationDate)}`,
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                }
+            )
+
+            const data = await response.json()
+
+            if (!response.ok) {
+                throw new Error(
+                    data.detail || 'Provision konnte nicht geladen werden.'
+                )
+            }
+
+            setCommissionData(data)
+        } catch (error) {
+            setCommissionData(null)
+            setCommissionError(
+                error.message || 'Provision konnte nicht geladen werden.'
+            )
+        } finally {
+            setCommissionLoading(false)
+        }
+    }
     const [calculationLoading, setCalculationLoading] = useState(false)
     const [calculationError, setCalculationError] = useState('')
 
@@ -1177,173 +1234,1041 @@ function NewContract() {
                 </div>
             )}
 
-            {calculationResult && energyType === 'strom' && (
-                <div
-                    className="tariff-calculator-card"
-                    style={{ marginTop: '24px' }}
-                >
-                    <div className="tariff-calculator-header">
-                        <div className="tariff-calculator-icon">€</div>
-
+            {tariffResults.length > 0 && energyType === 'strom' && (
+                <section className="tariff-results-section">
+                    <div className="tariff-results-heading">
                         <div>
-                            <h2>Netzkosten</h2>
+                            <span className="tariff-results-eyebrow">
+                                TARIFVERGLEICH
+                            </span>
+
+                            <h2>Passende Stromtarife</h2>
+
                             <p>
-                                {calculationResult.address.postal_code}{' '}
-                                {calculationResult.address.city}
+                                {tariffResults[0].postal_code}{' '}
+                                {tariffResults[0].city}
                                 {' · '}
-                                {calculationResult.network_operator.name}
+                                {tariffResults[0].network_operator_name}
+                                {' · '}
+                                {Number(
+                                    tariffResults[0].consumption_kwh
+                                ).toLocaleString('de-AT')}{' '}
+                                kWh / Jahr
                             </p>
                         </div>
-                    </div>
 
-                    <div className="tariff-form">
-                        <div className="tariff-form-grid">
-                            <div className="form-field">
-                                <label>Netznutzungsentgelt</label>
-                                <strong>
-                                    {formatEuro(
-                                        calculationResult.network.base_price +
-                                        calculationResult.network.work_price
-                                    )}
-                                </strong>
-                            </div>
-
-                            <div className="form-field">
-                                <label>Netzverlustentgelt</label>
-                                <strong>
-                                    {formatEuro(
-                                        calculationResult.network.network_loss
-                                    )}
-                                </strong>
-                            </div>
-
-                            <div className="form-field">
-                                <label>
-                                    {calculationResult.network.metering_cost_source ===
-                                    'fallback_max'
-                                        ? 'Messentgelt (Höchstpreis)'
-                                        : 'Messentgelt'}
-                                </label>
-                                <strong>
-                                    {formatEuro(
-                                        calculationResult.network.metering_cost
-                                    )}
-                                </strong>
-                            </div>
-
-                            <div className="form-field">
-                                <label>Netztarif</label>
-                                <strong>
-                                    {formatEuro(
-                                        calculationResult.network
-                                            .total_network_tariff
-                                    )}
-                                </strong>
-                            </div>
-                        </div>
-
-                        <div
-                            style={{
-                                borderTop: '1px solid #e7e7e7',
-                                margin: '24px 0',
-                            }}
-                        />
-
-                        <div className="tariff-form-grid">
-                            <div className="form-field">
-                                <label>Elektrizitätsabgabe</label>
-                                <strong>
-                                    {formatEuro(
-                                        calculationResult.charges
-                                            .electricity_tax
-                                    )}
-                                </strong>
-                            </div>
-
-                            <div className="form-field">
-                                <label>Erneuerbaren-Förderbeitrag</label>
-                                <strong>
-                                    {formatEuro(
-                                        calculationResult.charges
-                                            .renewable_contribution
-                                    )}
-                                </strong>
-                            </div>
-
-                            <div className="form-field">
-                                <label>Erneuerbaren-Förderpauschale</label>
-                                <strong>
-                                    {formatEuro(
-                                        calculationResult.charges
-                                            .renewable_flat_fee
-                                    )}
-                                </strong>
-                            </div>
-
-                            <div className="form-field">
-                                <label>Gebrauchsabgabe</label>
-                                <strong>Wird tarifabhängig berechnet</strong>
-                            </div>
-                        </div>
-
-                        <div
-                            style={{
-                                borderTop: '1px solid #e7e7e7',
-                                margin: '24px 0',
-                            }}
-                        />
-
-                        <div className="tariff-form-grid">
-                            <div className="form-field">
-                                <label>Netzkosten exkl. USt.</label>
-                                <strong>
-                                    {formatEuro(
-                                        calculationResult.net_total
-                                    )}
-                                </strong>
-                            </div>
-
-                            <div className="form-field">
-                                <label>
-                                    Umsatzsteuer{' '}
-                                    {calculationResult.vat_percent} %
-                                </label>
-                                <strong>
-                                    {formatEuro(calculationResult.vat)}
-                                </strong>
-                            </div>
-                        </div>
-
-                        <div
-                            style={{
-                                marginTop: '24px',
-                                padding: '22px',
-                                borderRadius: '12px',
-                                background: '#f4f7f6',
-                            }}
-                        >
-                            <div
-                                style={{
-                                    fontSize: '14px',
-                                    marginBottom: '6px',
-                                }}
-                            >
-                                Netzkosten inkl. Umsatzsteuer
-                            </div>
-
-                            <strong
-                                style={{
-                                    fontSize: '30px',
-                                }}
-                            >
-                                {formatEuro(
-                                    calculationResult.gross_total
-                                )}
-                            </strong>
+                        <div className="tariff-results-count">
+                            {tariffResults.length}{' '}
+                            {tariffResults.length === 1
+                                ? 'Tarif'
+                                : 'Tarife'}
                         </div>
                     </div>
-                </div>
+
+                    <div className="tariff-results-list">
+                        {tariffResults.map((tariff, index) => (
+                            <article
+                                className="supplier-tariff-card"
+                                key={tariff.tariff_id}
+                            >
+                                <div className="supplier-tariff-main">
+                                    <div className="supplier-tariff-provider">
+                                        <div className="supplier-logo-placeholder">
+                                            {tariff.provider_name
+                                                ?.charAt(0)
+                                                .toUpperCase()}
+                                        </div>
+
+                                        <div>
+                                            <div className="supplier-name-row">
+                                                <span className="supplier-name">
+                                                    {tariff.provider_name}
+                                                </span>
+
+                                                {index === 0 && (
+                                                    <span className="tariff-best-price-badge">
+                                                        Günstigster Tarif
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            <h3>{tariff.tariff_name}</h3>
+
+                                            <div className="supplier-tariff-location">
+                                                {tariff.postal_code}{' '}
+                                                {tariff.city}
+                                                <span>•</span>
+                                                {tariff.network_operator_name}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="supplier-tariff-price">
+                                        <span>Gesamtkosten</span>
+
+                                        <strong>
+                                            {formatEuro(
+                                                tariff.total_annual_cost
+                                            )}
+                                        </strong>
+
+                                        <small>pro Jahr</small>
+                                    </div>
+                                </div>
+
+                                {(() => {
+                                    const energy =
+                                        Number(tariff.energy_cost || 0) -
+                                        Number(tariff.bonus || 0)
+                                    const network = Number(
+                                        tariff.network_tariff || 0
+                                    )
+                                    const taxes =
+                                        Number(
+                                            tariff.regulatory_charges || 0
+                                        ) +
+                                        Number(tariff.usage_fee || 0)
+                                    const base = Number(
+                                        tariff.base_price_year || 0
+                                    )
+
+                                    const total =
+                                        energy + network + taxes + base
+
+                                    const energyPct =
+                                        total > 0
+                                            ? (energy / total) * 100
+                                            : 0
+                                    const networkPct =
+                                        total > 0
+                                            ? (network / total) * 100
+                                            : 0
+                                    const taxesPct =
+                                        total > 0
+                                            ? (taxes / total) * 100
+                                            : 0
+                                    const basePct =
+                                        total > 0
+                                            ? (base / total) * 100
+                                            : 0
+
+                                    const energyEnd = energyPct
+                                    const networkEnd =
+                                        energyEnd + networkPct
+                                    const taxesEnd =
+                                        networkEnd + taxesPct
+
+                                    return (
+                                        <div className="supplier-tariff-visual">
+                                            <div className="tariff-donut-area">
+                                                <div
+                                                    className="tariff-donut"
+                                                    style={{
+                                                        background: `conic-gradient(
+                                                            #087443 0% ${energyEnd}%,
+                                                            #1769d2 ${energyEnd}% ${networkEnd}%,
+                                                            #f3b52b ${networkEnd}% ${taxesEnd}%,
+                                                            #9aa6ad ${taxesEnd}% 100%
+                                                        )`,
+                                                    }}
+                                                >
+                                                    <div className="tariff-donut-center">
+                                                        <strong>
+                                                            {formatEuro(
+                                                                tariff.total_annual_cost
+                                                            )}
+                                                        </strong>
+                                                        <span>pro Jahr</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="tariff-donut-legend">
+                                                <div>
+                                                    <span className="tariff-legend-dot tariff-legend-energy" />
+                                                    <div>
+                                                        <span>
+                                                            Energiekosten
+                                                        </span>
+                                                        <strong>
+                                                            {formatEuro(
+                                                                energy
+                                                            )}{' '}
+                                                            ({Math.round(
+                                                                energyPct
+                                                            )}%)
+                                                        </strong>
+                                                    </div>
+                                                </div>
+
+                                                <div>
+                                                    <span className="tariff-legend-dot tariff-legend-network" />
+                                                    <div>
+                                                        <span>
+                                                            Netzentgelte
+                                                        </span>
+                                                        <strong>
+                                                            {formatEuro(
+                                                                network
+                                                            )}{' '}
+                                                            ({Math.round(
+                                                                networkPct
+                                                            )}%)
+                                                        </strong>
+                                                    </div>
+                                                </div>
+
+                                                <div>
+                                                    <span className="tariff-legend-dot tariff-legend-taxes" />
+                                                    <div>
+                                                        <span>
+                                                            Abgaben &amp;
+                                                            Steuern
+                                                        </span>
+                                                        <strong>
+                                                            {formatEuro(
+                                                                taxes
+                                                            )}{' '}
+                                                            ({Math.round(
+                                                                taxesPct
+                                                            )}%)
+                                                        </strong>
+                                                    </div>
+                                                </div>
+
+                                                <div>
+                                                    <span className="tariff-legend-dot tariff-legend-base" />
+                                                    <div>
+                                                        <span>
+                                                            Grundgebühr
+                                                        </span>
+                                                        <strong>
+                                                            {formatEuro(
+                                                                base
+                                                            )}{' '}
+                                                            ({Math.round(
+                                                                basePct
+                                                            )}%)
+                                                        </strong>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="tariff-reference-offer">
+                                                <div className="tariff-reference-price">
+                                                    <span>🍃</span>
+
+                                                    <strong>
+                                                        {Number(
+                                                            tariff.work_price_cent_kwh
+                                                        ).toLocaleString(
+                                                            'de-AT',
+                                                            {
+                                                                minimumFractionDigits: 2,
+                                                                maximumFractionDigits: 3,
+                                                            }
+                                                        )}{' '}
+                                                        ct/kWh
+                                                    </strong>
+                                                </div>
+
+                                                <div className="tariff-reference-feature">
+                                                    <span>✓</span>
+                                                    Tarif geprüft
+                                                </div>
+
+                                                <div className="tariff-reference-feature">
+                                                    <span>✓</span>
+                                                    Für diesen Netzbetreiber
+                                                    verfügbar
+                                                </div>
+
+                                                {Number(tariff.bonus) >
+                                                    0 && (
+                                                    <div className="tariff-reference-feature">
+                                                        <span>✓</span>
+                                                        Bonus{' '}
+                                                        {formatEuro(
+                                                            tariff.bonus
+                                                        )}
+                                                    </div>
+                                                )}
+
+                                                <button
+                                                    type="button"
+                                                    className="tariff-offer-button tariff-reference-offer-button"
+                                                >
+                                                    Zum Angebot
+                                                    <span>→</span>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )
+                                })()}
+
+                                <div className="supplier-tariff-footer">
+                                    <div className="supplier-tariff-features">
+                                        <span>✓ Tarif geprüft</span>
+                                        <span>✓ Für diesen Netzbetreiber verfügbar</span>
+                                    </div>
+
+                                    <div className="supplier-tariff-actions">
+                                        <button
+                                            type="button"
+                                            className="tariff-details-button"
+                                            onClick={() => {
+                                                setSelectedTariffResult(tariff)
+                                                setCommissionVisible(false)
+                                                setCommissionData(null)
+                                                setCommissionError('')
+                                                setNetworkDetailsOpen(false)
+                                            }}
+                                        >
+                                            Alle Details anzeigen
+                                            <span>→</span>
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            className="tariff-offer-button"
+                                        >
+                                            Zum Angebot
+                                            <span>→</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </article>
+                        ))}
+                    </div>
+                </section>
             )}
+
+            {selectedTariffResult &&
+                calculationResult &&
+                energyType === 'strom' && (
+                    <>
+                        <div
+                            className="tariff-detail-backdrop"
+                            onClick={() => setSelectedTariffResult(null)}
+                        />
+
+                        <aside className="tariff-detail-drawer">
+                            <div className="tariff-detail-topbar">
+                                <button
+                                    type="button"
+                                    className="tariff-detail-back"
+                                    onClick={() =>
+                                        setSelectedTariffResult(null)
+                                    }
+                                >
+                                    ← Zurück zur Tarifübersicht
+                                </button>
+
+                                <button
+                                    type="button"
+                                    className="tariff-detail-close"
+                                    onClick={() =>
+                                        setSelectedTariffResult(null)
+                                    }
+                                    aria-label="Tarifdetails schließen"
+                                >
+                                    ×
+                                </button>
+                            </div>
+
+                            <div className="tariff-detail-header">
+                                <div>
+                                    <div className="tariff-detail-provider-name">
+                                        {selectedTariffResult.provider_name}
+                                    </div>
+
+                                    <div className="tariff-detail-title-row">
+                                        <h2>
+                                            {selectedTariffResult.tariff_name}
+                                        </h2>
+
+                                        <span className="tariff-detail-tip">
+                                            🍃 Unser Tipp
+                                        </span>
+                                    </div>
+
+                                    <div className="tariff-detail-location">
+                                        {selectedTariffResult.postal_code}{' '}
+                                        {selectedTariffResult.city}
+                                        {' · '}
+                                        {
+                                            selectedTariffResult
+                                                .network_operator_name
+                                        }
+                                    </div>
+                                </div>
+
+                                <div className="tariff-detail-price">
+                                    <strong>
+                                        {Number(
+                                            selectedTariffResult
+                                                .work_price_cent_kwh
+                                        ).toLocaleString('de-AT', {
+                                            minimumFractionDigits: 2,
+                                            maximumFractionDigits: 3,
+                                        })}{' '}
+                                        ct/kWh
+                                    </strong>
+
+                                    <span>
+                                        {formatEuro(
+                                            selectedTariffResult
+                                                .total_annual_cost
+                                        )}{' '}
+                                        pro Jahr
+                                    </span>
+
+                                    <small>
+                                        bei{' '}
+                                        {Number(
+                                            selectedTariffResult
+                                                .consumption_kwh
+                                        ).toLocaleString('de-AT')}{' '}
+                                        kWh
+                                    </small>
+                                </div>
+                            </div>
+
+                            <div className="tariff-detail-tabs">
+                                <button type="button" className="active">
+                                    Übersicht
+                                </button>
+                                <button type="button">
+                                    Vertragsinfos
+                                </button>
+                            </div>
+
+                            <div className="tariff-detail-scroll">
+                                {(() => {
+                                    const energy =
+                                        Number(selectedTariffResult.energy_cost || 0) -
+                                        Number(selectedTariffResult.bonus || 0)
+
+                                    const network =
+                                        Number(selectedTariffResult.network_tariff || 0)
+
+                                    const taxes =
+                                        Number(
+                                            selectedTariffResult.regulatory_charges || 0
+                                        ) +
+                                        Number(selectedTariffResult.usage_fee || 0)
+
+                                    const base =
+                                        Number(
+                                            selectedTariffResult.base_price_year || 0
+                                        )
+
+                                    const total =
+                                        energy + network + taxes + base
+
+                                    const energyPct =
+                                        total > 0 ? (energy / total) * 100 : 0
+                                    const networkPct =
+                                        total > 0 ? (network / total) * 100 : 0
+                                    const taxesPct =
+                                        total > 0 ? (taxes / total) * 100 : 0
+
+                                    const energyEnd = energyPct
+                                    const networkEnd =
+                                        energyEnd + networkPct
+                                    const taxesEnd =
+                                        networkEnd + taxesPct
+
+                                    return (
+                                        <section className="tariff-overview-card">
+                                            <div
+                                                className="tariff-overview-donut"
+                                                style={{
+                                                    background: `conic-gradient(
+                                                        #087443 0% ${energyEnd}%,
+                                                        #1769d2 ${energyEnd}% ${networkEnd}%,
+                                                        #f3b52b ${networkEnd}% ${taxesEnd}%,
+                                                        #9aa6ad ${taxesEnd}% 100%
+                                                    )`,
+                                                }}
+                                            >
+                                                <div className="tariff-overview-donut-hole">
+                                                    <strong>
+                                                        {formatEuro(
+                                                            selectedTariffResult
+                                                                .total_annual_cost
+                                                        )}
+                                                    </strong>
+                                                    <span>pro Jahr</span>
+                                                </div>
+                                            </div>
+
+                                            <div className="tariff-overview-legend">
+                                                <div>
+                                                    <span className="tariff-overview-dot energy" />
+                                                    <span>Energiekosten</span>
+                                                    <strong>
+                                                        {formatEuro(energy)}
+                                                    </strong>
+                                                    <small>
+                                                        ({Math.round(energyPct)}%)
+                                                    </small>
+                                                </div>
+
+                                                <button
+                                                    type="button"
+                                                    className="tariff-overview-network-row"
+                                                    onClick={() =>
+                                                        setNetworkDetailsOpen(
+                                                            (value) => !value
+                                                        )
+                                                    }
+                                                >
+                                                    <span className="tariff-overview-dot network" />
+                                                    <span>Netzentgelte</span>
+                                                    <strong>
+                                                        {formatEuro(network)}
+                                                    </strong>
+                                                    <small>
+                                                        ({Math.round(networkPct)}%)
+                                                        {' '}
+                                                        {networkDetailsOpen
+                                                            ? '▲'
+                                                            : '▼'}
+                                                    </small>
+                                                </button>
+
+                                                <div>
+                                                    <span className="tariff-overview-dot taxes" />
+                                                    <span>
+                                                        Abgaben &amp; Steuern
+                                                    </span>
+                                                    <strong>
+                                                        {formatEuro(taxes)}
+                                                    </strong>
+                                                    <small>
+                                                        ({Math.round(taxesPct)}%)
+                                                    </small>
+                                                </div>
+
+                                                <div>
+                                                    <span className="tariff-overview-dot base" />
+                                                    <span>Grundgebühr</span>
+                                                    <strong>
+                                                        {formatEuro(base)}
+                                                    </strong>
+                                                    <small>
+                                                        (
+                                                        {Math.round(
+                                                            total > 0
+                                                                ? (base / total) * 100
+                                                                : 0
+                                                        )}
+                                                        %)
+                                                    </small>
+                                                </div>
+                                            </div>
+                                        </section>
+                                    )
+                                })()}
+
+                                {networkDetailsOpen && (
+                                    <section className="tariff-network-details">
+                                        <div className="tariff-network-details-head">
+                                            <div>
+                                                <strong>
+                                                    Netzentgelte im Detail
+                                                </strong>
+                                                <span>
+                                                    {
+                                                        selectedTariffResult
+                                                            .network_operator_name
+                                                    }
+                                                </span>
+                                            </div>
+
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    setNetworkDetailsOpen(false)
+                                                }
+                                                aria-label="Netzentgelte schließen"
+                                            >
+                                                ×
+                                            </button>
+                                        </div>
+
+                                        <div className="tariff-network-detail-row main">
+                                            <span>Netznutzungsentgelt</span>
+                                            <strong>
+                                                {formatEuro(
+                                                    calculationResult.network
+                                                        .base_price +
+                                                        calculationResult.network
+                                                            .work_price
+                                                )}
+                                            </strong>
+                                        </div>
+
+                                        <div className="tariff-network-detail-row sub">
+                                            <span>Grundpreis Netz</span>
+                                            <span>
+                                                {formatEuro(
+                                                    calculationResult.network
+                                                        .base_price
+                                                )}
+                                            </span>
+                                        </div>
+
+                                        <div className="tariff-network-detail-row sub">
+                                            <span>Arbeitspreis Netz</span>
+                                            <span>
+                                                {formatEuro(
+                                                    calculationResult.network
+                                                        .work_price
+                                                )}
+                                            </span>
+                                        </div>
+
+                                        <div className="tariff-network-detail-row">
+                                            <span>Netzverlustentgelt</span>
+                                            <strong>
+                                                {formatEuro(
+                                                    calculationResult.network
+                                                        .network_loss
+                                                )}
+                                            </strong>
+                                        </div>
+
+                                        <div className="tariff-network-detail-row">
+                                            <span>
+                                                {calculationResult.network
+                                                    .metering_cost_source ===
+                                                'fallback_max'
+                                                    ? 'Messentgelt (Höchstpreis)'
+                                                    : 'Messentgelt'}
+                                            </span>
+                                            <strong>
+                                                {formatEuro(
+                                                    calculationResult.network
+                                                        .metering_cost
+                                                )}
+                                            </strong>
+                                        </div>
+
+                                        <div className="tariff-network-detail-row total">
+                                            <span>Netztarif</span>
+                                            <strong>
+                                                {formatEuro(
+                                                    calculationResult.network
+                                                        .total_network_tariff
+                                                )}
+                                            </strong>
+                                        </div>
+                                    </section>
+                                )}
+
+                                <div className="tariff-reference-middle">
+                                    <section className="tariff-reference-highlights">
+                                        <h3>🌿 Tarif-Highlights</h3>
+
+                                        <div>
+                                            <span>✓</span>
+                                            Tarif für den gewählten
+                                            Netzbetreiber verfügbar
+                                        </div>
+
+                                        <div>
+                                            <span>✓</span>
+                                            Netz- und Abgabenkosten berücksichtigt
+                                        </div>
+
+                                        <div>
+                                            <span>✓</span>
+                                            Tarifkosten transparent aufgeschlüsselt
+                                        </div>
+                                    </section>
+
+                                    <section className="tariff-provision-card">
+                                        <div className="tariff-provision-reference-title">
+                                            <span>◉</span>
+                                            <strong>
+                                                Provisionen anzeigen
+                                            </strong>
+                                        </div>
+
+                                        <p>
+                                            Schieben Sie den Regler nach rechts,
+                                            um die Provision anzuzeigen.
+                                        </p>
+
+                                        <div className="tariff-provision-reference-control">
+                                            <span
+                                                className={
+                                                    commissionVisible
+                                                        ? 'unlocked'
+                                                        : ''
+                                                }
+                                            >
+                                                <svg
+                                                    viewBox="0 0 24 24"
+                                                    fill="none"
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                    aria-hidden="true"
+                                                >
+                                                    <rect
+                                                        x="6"
+                                                        y="10"
+                                                        width="12"
+                                                        height="10"
+                                                        rx="2"
+                                                        fill="currentColor"
+                                                    />
+                                                    <path
+                                                        d={
+                                                            commissionVisible
+                                                                ? "M9 10V7.5C9 5.6 10.4 4 12.3 4C13.4 4 14.4 4.5 15 5.3"
+                                                                : "M8.5 10V7.5C8.5 5.6 10.1 4 12 4C13.9 4 15.5 5.6 15.5 7.5V10"
+                                                        }
+                                                        stroke="currentColor"
+                                                        strokeWidth="2"
+                                                        strokeLinecap="round"
+                                                    />
+                                                    <circle
+                                                        cx="12"
+                                                        cy="15"
+                                                        r="1.3"
+                                                        fill="white"
+                                                    />
+                                                    <path
+                                                        d="M12 16.2V18"
+                                                        stroke="white"
+                                                        strokeWidth="1.3"
+                                                        strokeLinecap="round"
+                                                    />
+                                                </svg>
+                                            </span>
+
+                                            <button
+                                                type="button"
+                                                className={`tariff-provision-slider ${
+                                                    commissionVisible
+                                                        ? 'active'
+                                                        : ''
+                                                }`}
+                                                onClick={toggleTariffCommission}
+                                                aria-pressed={
+                                                    commissionVisible
+                                                }
+                                            >
+                                                <i />
+                                            </button>
+
+                                            <span
+                                                className="tariff-provision-eye"
+                                                aria-hidden="true"
+                                            >
+                                                <svg
+                                                    viewBox="0 0 24 24"
+                                                    fill="none"
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                >
+                                                    <path
+                                                        d="M2.5 12C4.7 8.2 8 6.2 12 6.2C16 6.2 19.3 8.2 21.5 12C19.3 15.8 16 17.8 12 17.8C8 17.8 4.7 15.8 2.5 12Z"
+                                                        stroke="currentColor"
+                                                        strokeWidth="2"
+                                                        strokeLinecap="round"
+                                                        strokeLinejoin="round"
+                                                    />
+                                                    <circle
+                                                        cx="12"
+                                                        cy="12"
+                                                        r="3.2"
+                                                        fill="currentColor"
+                                                    />
+                                                </svg>
+                                            </span>
+                                        </div>
+
+                                        {commissionVisible && (
+                                            <div className="tariff-provision-result">
+                                                {commissionLoading && (
+                                                    <span>
+                                                        Provision wird geladen …
+                                                    </span>
+                                                )}
+
+                                                {!commissionLoading &&
+                                                    commissionError && (
+                                                        <span className="error">
+                                                            {commissionError}
+                                                        </span>
+                                                    )}
+
+                                                {!commissionLoading &&
+                                                    !commissionError &&
+                                                    commissionData && (
+                                                        <>
+                                                            <span>
+                                                                Ihre Provision
+                                                            </span>
+                                                            <strong>
+                                                                {formatEuro(
+                                                                    commissionData
+                                                                        .agent_commission
+                                                                )}
+                                                            </strong>
+                                                        </>
+                                                    )}
+                                            </div>
+                                        )}
+                                    </section>
+                                </div>
+
+                                <section className="tariff-reference-info">
+                                    <div className="tariff-reference-info-icon">
+                                        <svg
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            aria-hidden="true"
+                                        >
+                                            <path
+                                                d="M9 18h6M10 21h4M8.4 14.5C6.9 13.4 6 11.7 6 9.8A6 6 0 0 1 18 9.8c0 1.9-.9 3.6-2.4 4.7-.9.7-1.3 1.4-1.4 2.5H9.8c-.1-1.1-.5-1.8-1.4-2.5Z"
+                                                stroke="currentColor"
+                                                strokeWidth="1.8"
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                            />
+                                            <path
+                                                d="M12 2V1M4.9 4.2 4.2 3.5M19.1 4.2l.7-.7M3 10H2M22 10h-1"
+                                                stroke="currentColor"
+                                                strokeWidth="1.8"
+                                                strokeLinecap="round"
+                                            />
+                                        </svg>
+                                    </div>
+
+                                    <div>
+                                        <strong>
+                                            {customerType === 'privat'
+                                                ? 'Preisübersicht für Privatkunden'
+                                                : 'Preisübersicht für Gewerbekunden'}
+                                        </strong>
+                                        <span>
+                                            Der angezeigte Jahresbetrag (
+                                            {formatEuro(
+                                                selectedTariffResult
+                                                    .total_annual_cost
+                                            )}
+                                            ) ergibt sich aus allen
+                                            Kostenbestandteilen des Tarifs.
+                                        </span>
+                                    </div>
+                                </section>
+                            </div>
+
+                            {tariffDocumentsOpen && (
+                                <div className="tariff-documents-popover">
+                                    <div className="tariff-documents-popover-header">
+                                        <div>
+                                            <strong>PDF Dokumente</strong>
+                                            <span>
+                                                Preisblatt, AGB, Vollmacht & Formular
+                                            </span>
+                                        </div>
+
+                                        <button
+                                            type="button"
+                                            onClick={() =>
+                                                setTariffDocumentsOpen(false)
+                                            }
+                                            aria-label="Dokumente schließen"
+                                        >
+                                            ×
+                                        </button>
+                                    </div>
+
+                                    {tariffDocumentsLoading ? (
+                                        <div className="tariff-documents-status">
+                                            Dokumente werden geladen...
+                                        </div>
+                                    ) : tariffDocumentsError ? (
+                                        <div className="tariff-documents-status tariff-documents-status-error">
+                                            {tariffDocumentsError}
+                                        </div>
+                                    ) : tariffDocuments.length === 0 ? (
+                                        <div className="tariff-documents-status">
+                                            Für diesen Tarif sind noch keine PDF-Dokumente hinterlegt.
+                                        </div>
+                                    ) : (
+                                        <div className="tariff-documents-popover-list">
+                                            {tariffDocuments.map((documentItem) => {
+                                                const labels = {
+                                                    price_sheet: 'Preisblatt',
+                                                    agb: 'AGB',
+                                                    power_of_attorney: 'Vollmacht',
+                                                    form: 'Formular',
+                                                    other: 'Sonstiges',
+                                                }
+
+                                                return (
+                                                    <button
+                                                        type="button"
+                                                        key={documentItem.id}
+                                                        onClick={async () => {
+                                                            try {
+                                                                const token =
+                                                                    localStorage.getItem(
+                                                                        'access_token'
+                                                                    )
+
+                                                                const response =
+                                                                    await fetch(
+                                                                        `http://127.0.0.1:8000${documentItem.download_url}`,
+                                                                        {
+                                                                            headers: {
+                                                                                Authorization:
+                                                                                    `Bearer ${token}`,
+                                                                            },
+                                                                        }
+                                                                    )
+
+                                                                if (!response.ok) {
+                                                                    throw new Error(
+                                                                        'PDF konnte nicht geöffnet werden.'
+                                                                    )
+                                                                }
+
+                                                                const blob =
+                                                                    await response.blob()
+                                                                const url =
+                                                                    URL.createObjectURL(
+                                                                        blob
+                                                                    )
+
+                                                                window.open(
+                                                                    url,
+                                                                    '_blank',
+                                                                    'noopener,noreferrer'
+                                                                )
+
+                                                                window.setTimeout(
+                                                                    () =>
+                                                                        URL.revokeObjectURL(
+                                                                            url
+                                                                        ),
+                                                                    60000
+                                                                )
+                                                            } catch (error) {
+                                                                setTariffDocumentsError(
+                                                                    error.message ||
+                                                                        'PDF konnte nicht geöffnet werden.'
+                                                                )
+                                                            }
+                                                        }}
+                                                    >
+                                                        <span className="tariff-document-pdf-icon">
+                                                            PDF
+                                                        </span>
+
+                                                        <span className="tariff-document-name">
+                                                            <strong>
+                                                                {labels[
+                                                                    documentItem
+                                                                        .document_type
+                                                                ] ||
+                                                                    documentItem.document_type}
+                                                            </strong>
+                                                            <small>
+                                                                {
+                                                                    documentItem.file_name
+                                                                }
+                                                            </small>
+                                                        </span>
+
+                                                        <span className="tariff-document-open">
+                                                            Öffnen →
+                                                        </span>
+                                                    </button>
+                                                )
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            <div className="tariff-detail-footer">
+                                <button
+                                    type="button"
+                                    className="tariff-pdf-button"
+                                    onClick={async () => {
+                                        if (tariffDocumentsOpen) {
+                                            setTariffDocumentsOpen(false)
+                                            return
+                                        }
+
+                                        setTariffDocumentsOpen(true)
+                                        setTariffDocumentsLoading(true)
+                                        setTariffDocumentsError('')
+
+                                        try {
+                                            const token =
+                                                localStorage.getItem(
+                                                    'access_token'
+                                                )
+
+                                            const response = await fetch(
+                                                `http://127.0.0.1:8000/tariff-documents/tariffs/${selectedTariffResult.tariff_id}`,
+                                                {
+                                                    headers: {
+                                                        Authorization:
+                                                            `Bearer ${token}`,
+                                                    },
+                                                }
+                                            )
+
+                                            const data =
+                                                await response.json()
+
+                                            if (!response.ok) {
+                                                throw new Error(
+                                                    data.detail ||
+                                                        'Dokumente konnten nicht geladen werden.'
+                                                )
+                                            }
+
+                                            setTariffDocuments(data)
+                                        } catch (error) {
+                                            setTariffDocuments([])
+                                            setTariffDocumentsError(
+                                                error.message ||
+                                                    'Dokumente konnten nicht geladen werden.'
+                                            )
+                                        } finally {
+                                            setTariffDocumentsLoading(false)
+                                        }
+                                    }}
+                                >
+                                    <span className="tariff-pdf-icon">PDF</span>
+
+                                    <span>
+                                        <strong>PDF Formular herunterladen</strong>
+                                    </span>
+                                </button>
+
+                                <button
+                                    type="button"
+                                    className="tariff-offer-button"
+                                >
+                                    Zum Angebot
+                                    <span>→</span>
+                                </button>
+                            </div>
+                        </aside>
+                    </>
+                )}
+
         </div>
     )
 }

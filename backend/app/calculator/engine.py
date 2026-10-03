@@ -152,6 +152,7 @@ def calculate_tariffs(
             TariffCalculationResult(
                 tariff_id=tariff.id,
                 provider_id=tariff.provider_id,
+                provider_name=tariff.provider.name,
                 tariff_name=tariff.name,
 
                 postal_code=postal_code.postal_code,

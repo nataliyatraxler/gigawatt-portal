@@ -21,3 +21,5 @@ from app.models.network_operator_dropdown_mapping import NetworkOperatorDropdown
 
 from app.models.usage_fee_rule import UsageFeeRule
 from app.models.gas_network_tariff import GasNetworkTariff
+
+from app.models.tariff_document import TariffDocument, TariffDocumentType

@@ -26,6 +26,7 @@ class TariffCalculationRequest(BaseModel):
 class TariffCalculationResult(BaseModel):
     tariff_id: int
     provider_id: int
+    provider_name: str
     tariff_name: str
 
     postal_code: str
