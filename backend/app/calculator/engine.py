@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -8,6 +10,11 @@ from app.calculator.formulas import (
     calculate_energy_cost,
 )
 from app.calculator.sorting import sort_by_annual_cost
+from app.calculator.total_network_costs import calculate_total_network_costs
+from app.calculator.usage_fees import (
+    calculate_usage_fee,
+    get_usage_fee_rule,
+)
 from app.models.tariff import Tariff
 from app.repositories.network import (
     get_network_operator_by_id,
@@ -35,15 +42,9 @@ def calculate_tariffs(
             detail="PLZ/Ort wurde nicht gefunden.",
         )
 
-    if postal_code.network_operator_id is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Für diesen Ort wurde kein Netzbetreiber gefunden.",
-        )
-
     network_operator = get_network_operator_by_id(
         db,
-        postal_code.network_operator_id,
+        request.network_operator_id,
     )
 
     if not network_operator:
@@ -76,6 +77,23 @@ def calculate_tariffs(
 
     tariffs = query.all()
 
+    network_costs = calculate_total_network_costs(
+        db,
+        calculation_date=request.calculation_date,
+        year=request.calculation_date.year,
+        network_area=network_operator.sne_network_area,
+        network_operator_id=network_operator.id,
+        municipality=postal_code.municipality,
+        gkz=postal_code.gkz,
+        network_level=request.network_level,
+        tariff_type=request.tariff_type,
+        customer_type=request.customer_type,
+        consumption_kwh=Decimal(
+            str(request.consumption_kwh)
+        ),
+        meter_type=request.meter_type,
+    )
+
     results = []
 
     for tariff in tariffs:
@@ -96,6 +114,38 @@ def calculate_tariffs(
                 annual_cost_before_bonus,
                 tariff.bonus,
             )
+        )
+
+        usage_fee_rule = get_usage_fee_rule(
+            db,
+            calculation_date=request.calculation_date,
+            network_operator_id=network_operator.id,
+            gkz=postal_code.gkz,
+            energy_type=request.energy_type,
+            provider_id=tariff.provider_id,
+        )
+
+        usage_fee = calculate_usage_fee(
+            usage_fee_rule,
+            consumption_kwh=Decimal(
+                str(request.consumption_kwh)
+            ),
+            energy_cost=Decimal(
+                str(annual_cost_after_bonus)
+            ),
+            network_tariff=network_costs[
+                "network"
+            ]["total_network_tariff"],
+            metering_cost=network_costs[
+                "network"
+            ]["metering_cost"],
+        )
+
+        total_annual_cost = (
+            Decimal(str(annual_cost_after_bonus))
+            + network_costs["network"]["total_network_tariff"]
+            + network_costs["charges"]["total_charges"]
+            + usage_fee
         )
 
         results.append(
@@ -133,6 +183,23 @@ def calculate_tariffs(
                 annual_cost_after_bonus=round(
                     annual_cost_after_bonus,
                     2,
+                ),
+
+                network_tariff=float(
+                    network_costs[
+                        "network"
+                    ]["total_network_tariff"]
+                ),
+                regulatory_charges=float(
+                    network_costs[
+                        "charges"
+                    ]["total_charges"]
+                ),
+                usage_fee=float(
+                    usage_fee
+                ),
+                total_annual_cost=float(
+                    total_annual_cost
                 ),
             )
         )

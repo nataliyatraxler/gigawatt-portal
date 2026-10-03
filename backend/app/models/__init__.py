@@ -18,3 +18,6 @@ from app.models.regulatory_charge import RegulatoryCharge
 from app.models.network_operator_coverage import NetworkOperatorCoverage
 from app.models.network_operator_identifier import NetworkOperatorIdentifier
 from app.models.network_operator_dropdown_mapping import NetworkOperatorDropdownMapping
+
+from app.models.usage_fee_rule import UsageFeeRule
+from app.models.gas_network_tariff import GasNetworkTariff

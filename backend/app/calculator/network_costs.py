@@ -57,7 +57,20 @@ def calculate_sne_network_costs(
         .one_or_none()
     )
 
-    if metering_fee is None:
+    if metering_fee is not None:
+        metering_cost = metering_fee.annual_fee
+        metering_cost_source = "verified"
+    elif (
+        network_level == 7
+        and tariff_type == "nicht_gemessen"
+        and meter_type == "standard"
+    ):
+        # SNE-V-Höchstpreis als konservativer Fallback für
+        # NE7 / nicht gemessen / Standard-Drehstromzählung.
+        # Ein NB-spezifisches Messentgelt hat immer Vorrang.
+        metering_cost = Decimal("28.80")
+        metering_cost_source = "fallback_max"
+    else:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=(
@@ -84,8 +97,6 @@ def calculate_sne_network_costs(
         consumption_kwh * network_loss_cent_kwh / CENT
     )
 
-    metering_cost = metering_fee.annual_fee
-
     total = (
         base_price
         + work_price
@@ -104,5 +115,6 @@ def calculate_sne_network_costs(
         "work_price": money(work_price),
         "network_loss": money(network_loss),
         "metering_cost": money(metering_cost),
+        "metering_cost_source": metering_cost_source,
         "total_network_tariff": money(total),
     }

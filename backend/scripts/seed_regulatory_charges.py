@@ -83,6 +83,17 @@ CHARGES = [
         "valid_from": date(2026, 3, 1),
         "valid_to": None,
     },
+    {
+        "name": "Gebrauchsabgabe",
+        "calculation_type": "cent_per_kwh",
+        "value": Decimal("0.3789"),
+        "network_level": None,
+        "tariff_type": None,
+        "customer_type": None,
+        "network_area": "Salzburg",
+        "valid_from": date(2026, 1, 1),
+        "valid_to": date(2026, 12, 31),
+    },
 ]
 
 

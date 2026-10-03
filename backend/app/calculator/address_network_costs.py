@@ -86,6 +86,7 @@ def calculate_network_costs_for_address(
         network_area=network_operator.sne_network_area,
         network_operator_id=network_operator.id,
         municipality=postal_code.municipality,
+        gkz=postal_code.gkz,
         network_level=network_level,
         customer_type=customer_type,
         tariff_type=tariff_type,

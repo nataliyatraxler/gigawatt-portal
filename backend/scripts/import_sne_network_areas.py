@@ -17,7 +17,7 @@ YEAR = 2026
 
 AREA_OVERRIDES = {
     # Netzbereich Linz
-    "AT003100": "Linz",  # LINZ NETZ GmbH
+    "AT003100": "Oberösterreich",  # LINZ NETZ GmbH
     "AT003310": "Linz",  # Elektrizitätswerk Perg GmbH
     "AT003460": "Linz",  # Ebner Strom GmbH
     "AT002900": "Linz",  # E-Werk Sarmingstein
@@ -25,7 +25,7 @@ AREA_OVERRIDES = {
 
     # Eigene Netzbereiche
     "AT007100": "Klagenfurt",  # Energie Klagenfurt GmbH
-    "AT008100": "Graz",        # Stromnetz Graz GmbH
+    "AT008100": "Steiermark",        # Stromnetz Graz GmbH
     "AT005100": "Innsbruck",   # Innsbrucker Kommunalbetriebe AG
 
     # Im aktuellen Import eventuell nicht vorhanden,

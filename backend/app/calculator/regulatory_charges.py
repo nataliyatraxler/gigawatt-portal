@@ -116,20 +116,6 @@ def calculate_regulatory_charges(
         network_level=network_level,
     )
 
-    usage_fee = (
-        db.query(RegulatoryCharge)
-        .filter(
-            RegulatoryCharge.name == "Gebrauchsabgabe",
-            RegulatoryCharge.network_area == municipality,
-            RegulatoryCharge.valid_from <= calculation_date,
-            or_(
-                RegulatoryCharge.valid_to.is_(None),
-                RegulatoryCharge.valid_to >= calculation_date,
-            ),
-        )
-        .one_or_none()
-    )
-
     electricity_tax_cost = (
         consumption_kwh * electricity_tax.value / CENT
     )
@@ -142,11 +128,9 @@ def calculate_regulatory_charges(
 
     renewable_flat_fee_cost = renewable_flat_fee.value
 
-    usage_fee_cost = (
-        network_tariff * usage_fee.value / PERCENT
-        if usage_fee
-        else Decimal("0")
-    )
+    # Gebrauchsabgabe is calculated separately per tariff/provider
+    # via UsageFeeRule.
+    usage_fee_cost = Decimal("0")
 
     total = (
         electricity_tax_cost

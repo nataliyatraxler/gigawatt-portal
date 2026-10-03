@@ -29,6 +29,7 @@ function NewContract() {
     const [networkOperatorError, setNetworkOperatorError] = useState('')
 
     const [calculationResult, setCalculationResult] = useState(null)
+    const [tariffResults, setTariffResults] = useState([])
     const [calculationLoading, setCalculationLoading] = useState(false)
     const [calculationError, setCalculationError] = useState('')
 
@@ -281,6 +282,7 @@ function NewContract() {
 
     useEffect(() => {
         if (
+            energyType === 'gas' ||
             !selectedPostalCode ||
             zpn.trim() ||
             networkOperatorIdentifiers.length === 0 ||
@@ -453,13 +455,7 @@ function NewContract() {
 
         setCalculationError('')
         setCalculationResult(null)
-
-        if (energyType !== 'strom') {
-            setCalculationError(
-                'Die Netzkostenberechnung für Gas ist derzeit noch nicht verfügbar.'
-            )
-            return
-        }
+        setTariffResults([])
 
         if (!selectedPostalCode) {
             setCalculationError('Bitte wählen Sie eine Postleitzahl und einen Ort aus.')
@@ -506,12 +502,22 @@ function NewContract() {
                     body: JSON.stringify({
                         postal_code_id: selectedPostalCode.id,
                         street_code: selectedStreet?.street_code ?? null,
-                        network_operator_id: selectedNetworkOperator.network_operator_id,
-                        consumption_kwh: consumptionValue,
+                        network_operator_id:
+                            selectedNetworkOperator.network_operator_id,
+                        energy_type: energyType,
+                        ...(energyType === 'gas'
+                            ? {
+                                  consumption_kwh: consumptionValue,
+                                  network_level: 3,
+                                  tariff_type: 'nicht_leistungsgemessen',
+                              }
+                            : {
+                                  consumption_kwh: consumptionValue,
+                                  network_level: 7,
+                                  tariff_type: 'nicht_gemessen',
+                              }),
                         customer_type: customerType,
                         calculation_date: getLocalDate(),
-                        network_level: 7,
-                        tariff_type: 'nicht_gemessen',
                         meter_type: 'standard',
                     }),
                 }
@@ -526,6 +532,46 @@ function NewContract() {
             }
 
             setCalculationResult(data)
+
+            if (energyType === 'gas') {
+                return
+            }
+
+            const tariffResponse = await fetch(
+                'http://127.0.0.1:8000/calculator/tariffs',
+                {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({
+                        postal_code_id: selectedPostalCode.id,
+                        network_operator_id:
+                            selectedNetworkOperator.network_operator_id,
+                        consumption_kwh: consumptionValue,
+                        energy_type: energyType,
+                        customer_type: customerType,
+                        calculation_date: getLocalDate(),
+                        network_level: 7,
+                        tariff_type: 'nicht_gemessen',
+                        meter_type: 'standard',
+                    }),
+                }
+            )
+
+            const tariffData = await tariffResponse.json()
+
+            if (!tariffResponse.ok) {
+                throw new Error(
+                    tariffData.detail ||
+                        'Die Tarife konnten nicht berechnet werden.'
+                )
+            }
+
+            setTariffResults(tariffData)
+
+            console.log('Tariff results:', tariffData)
         } catch (error) {
             console.error(error)
 
@@ -741,6 +787,7 @@ function NewContract() {
 
                                 <span>kWh</span>
                             </div>
+
                         </div>
                     </div>
 
@@ -1032,7 +1079,105 @@ function NewContract() {
                 </form>
             </div>
 
-            {calculationResult && (
+            {calculationResult && energyType === 'gas' && (
+                <div
+                    className="tariff-calculator-card"
+                    style={{ marginTop: '24px' }}
+                >
+                    <div className="tariff-calculator-header">
+                        <div className="tariff-calculator-icon">€</div>
+
+                        <div>
+                            <h2>Gas-Netznutzung</h2>
+                            <p>
+                                {selectedPostalCode?.postal_code}{' '}
+                                {selectedPostalCode?.city}
+                                {' · '}
+                                {selectedNetworkOperator?.network_operator_name ||
+                                    selectedNetworkOperator?.name}
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="tariff-form">
+                        <div className="tariff-form-grid">
+                            <div className="form-field">
+                                <label>Jahresverbrauch</label>
+                                <strong>
+                                    {Number(
+                                        calculationResult.consumption_kwh
+                                    ).toLocaleString('de-AT', {
+                                        maximumFractionDigits: 2,
+                                    })}{' '}
+                                    kWh
+                                </strong>
+                            </div>
+
+                            <div className="form-field">
+                                <label>Berechneter Verbrauch</label>
+                                <strong>
+                                    {Number(
+                                        calculationResult.consumption_kwh
+                                    ).toLocaleString('de-AT', {
+                                        maximumFractionDigits: 2,
+                                    })}{' '}
+                                    kWh
+                                </strong>
+                            </div>
+
+                            <div className="form-field">
+                                <label>Arbeitspreis</label>
+                                <strong>
+                                    {formatEuro(
+                                        calculationResult.network.work_price
+                                    )}
+                                </strong>
+                            </div>
+
+                            <div className="form-field">
+                                <label>Pauschale pro Jahr</label>
+                                <strong>
+                                    {formatEuro(
+                                        calculationResult.network.base_price
+                                    )}
+                                </strong>
+                            </div>
+                        </div>
+
+                        <div
+                            style={{
+                                marginTop: '24px',
+                                padding: '22px',
+                                borderRadius: '12px',
+                                background: '#f4f7f6',
+                            }}
+                        >
+                            <div
+                                style={{
+                                    fontSize: '14px',
+                                    marginBottom: '6px',
+                                }}
+                            >
+                                Netznutzungsentgelt
+                            </div>
+
+                            <strong style={{ fontSize: '30px' }}>
+                                {formatEuro(
+                                    calculationResult.network
+                                        .network_usage_subtotal
+                                )}
+                            </strong>
+                        </div>
+
+                        <p style={{ marginTop: '16px' }}>
+                            Messentgelt, Abgaben und Umsatzsteuer sind
+                            in diesem Zwischenstand noch nicht enthalten.
+                        </p>
+                    </div>
+                </div>
+            )}
+
+            {calculationResult && energyType === 'strom' && (
                 <div
                     className="tariff-calculator-card"
                     style={{ marginTop: '24px' }}
@@ -1073,7 +1218,12 @@ function NewContract() {
                             </div>
 
                             <div className="form-field">
-                                <label>Messentgelt</label>
+                                <label>
+                                    {calculationResult.network.metering_cost_source ===
+                                    'fallback_max'
+                                        ? 'Messentgelt (Höchstpreis)'
+                                        : 'Messentgelt'}
+                                </label>
                                 <strong>
                                     {formatEuro(
                                         calculationResult.network.metering_cost
@@ -1132,11 +1282,7 @@ function NewContract() {
 
                             <div className="form-field">
                                 <label>Gebrauchsabgabe</label>
-                                <strong>
-                                    {formatEuro(
-                                        calculationResult.charges.usage_fee
-                                    )}
-                                </strong>
+                                <strong>Wird tarifabhängig berechnet</strong>
                             </div>
                         </div>
 

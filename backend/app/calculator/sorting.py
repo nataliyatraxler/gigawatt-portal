@@ -6,5 +6,5 @@ def sort_by_annual_cost(
 ) -> list[TariffCalculationResult]:
     return sorted(
         results,
-        key=lambda item: item.annual_cost_after_bonus,
+        key=lambda item: item.total_annual_cost,
     )
