@@ -100,7 +100,7 @@ function Sidebar({ user, onLogout }) {
                     <NavLink
                         key={item.path}
                         to={item.path}
-                        end={item.path === '/'}
+                        end={item.path === '/' || item.path === '/contracts'}
                         className={({ isActive }) =>
                             `menu-item ${isActive ? 'active' : ''}`
                         }

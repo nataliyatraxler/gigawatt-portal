@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.models.gas_network_tariff import GasNetworkTariff
 from app.models.network_operator import NetworkOperator
 from app.models.network_operator_identifier import NetworkOperatorIdentifier
+from app.models.network_metering_fee import NetworkMeteringFee
 
 
 def resolve_gas_network_area(
@@ -208,6 +209,8 @@ def calculate_gas_network_usage_costs(
     network_operator_id: int,
     consumption_kwh: Decimal,
     network_level: int = 3,
+    customer_type: str = "privat",
+    meter_type: str = "standard",
 ) -> dict:
     tariff_variant = "nicht_leistungsgemessen"
 
@@ -244,7 +247,33 @@ def calculate_gas_network_usage_costs(
     )
 
     base_price = pauschale_cent / Decimal("100")
-    subtotal = base_price + work_price
+
+    # Standard assumption for the tariff calculator:
+    # Privat -> G4, Gewerbe -> G6.
+    # An explicitly supplied gas meter type always takes precedence.
+    if meter_type == "standard":
+        gas_meter_type = "G6" if customer_type == "gewerbe" else "G4"
+    else:
+        gas_meter_type = meter_type
+
+    metering_fee_row = (
+        db.query(NetworkMeteringFee)
+        .filter(
+            NetworkMeteringFee.network_operator_id == network_operator_id,
+            NetworkMeteringFee.year == year,
+            NetworkMeteringFee.energy_type == "gas",
+            NetworkMeteringFee.meter_type == gas_meter_type,
+        )
+        .one_or_none()
+    )
+
+    metering_fee = (
+        metering_fee_row.annual_fee
+        if metering_fee_row is not None
+        else Decimal("0")
+    )
+
+    subtotal = base_price + work_price + metering_fee
 
     return {
         "year": year,
@@ -255,6 +284,11 @@ def calculate_gas_network_usage_costs(
         "consumption_kwh": consumption_kwh,
         "base_price": base_price.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP),
         "work_price": work_price.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP),
+        "meter_type": gas_meter_type,
+        "metering_fee": metering_fee.quantize(
+            Decimal("0.01"),
+            rounding=ROUND_HALF_UP,
+        ),
         "network_usage_subtotal": subtotal.quantize(
             Decimal("0.01"),
             rounding=ROUND_HALF_UP,

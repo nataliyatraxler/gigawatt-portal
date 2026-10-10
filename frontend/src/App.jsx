@@ -11,6 +11,7 @@ import Layout from './components/Layout'
 import Dashboard from './pages/Dashboard'
 import Contracts from './pages/Contracts'
 import NewContract from './pages/NewContract'
+import OfferContract from './pages/OfferContract'
 import Customers from './pages/Customers'
 import Commissions from './pages/Commissions'
 import Payments from './pages/Payments'
@@ -182,6 +183,11 @@ function App() {
         <Route
           path="contracts/new"
           element={<NewContract />}
+        />
+
+        <Route
+          path="contracts/offer"
+          element={<OfferContract />}
         />
 
         <Route

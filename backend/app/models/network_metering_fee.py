@@ -27,6 +27,11 @@ class NetworkMeteringFee(Base):
         index=True,
     )
 
+    energy_type: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+    )
+
     meter_type: Mapped[str] = mapped_column(
         String(50),
         nullable=False,
@@ -46,6 +51,7 @@ class NetworkMeteringFee(Base):
         UniqueConstraint(
             "network_operator_id",
             "year",
+            "energy_type",
             "meter_type",
             name="uq_network_metering_fee",
         ),

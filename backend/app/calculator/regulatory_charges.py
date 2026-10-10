@@ -146,3 +146,49 @@ def calculate_regulatory_charges(
         "usage_fee": money(usage_fee_cost),
         "total_charges": money(total),
     }
+
+
+def calculate_gas_regulatory_charges(
+    db: Session,
+    *,
+    calculation_date: date,
+    consumption_kwh: Decimal,
+    conversion_factor_kwh_m3: Decimal,
+) -> dict:
+    if consumption_kwh <= 0:
+        raise ValueError("Gasverbrauch in kWh muss größer als 0 sein.")
+
+    if conversion_factor_kwh_m3 <= 0:
+        raise ValueError(
+            "Gas-Umrechnungsfaktor muss größer als 0 sein."
+        )
+
+    gas_tax = get_charge(
+        db,
+        name="Erdgasabgabe",
+        calculation_date=calculation_date,
+    )
+
+    if gas_tax.calculation_type != "cent_per_nm3":
+        raise ValueError(
+            "Erdgasabgabe muss als cent_per_nm3 konfiguriert sein."
+        )
+
+    consumption_nm3 = (
+        consumption_kwh / conversion_factor_kwh_m3
+    )
+
+    gas_tax_cost = (
+        consumption_nm3 * gas_tax.value / CENT
+    )
+
+    return {
+        "consumption_nm3": consumption_nm3.quantize(
+            Decimal("0.001"),
+            rounding=ROUND_HALF_UP,
+        ),
+        "conversion_factor_kwh_m3": conversion_factor_kwh_m3,
+        "gas_tax_rate_cent_nm3": gas_tax.value,
+        "gas_tax": money(gas_tax_cost),
+        "total_charges": money(gas_tax_cost),
+    }

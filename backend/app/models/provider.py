@@ -19,6 +19,11 @@ class Provider(Base):
         nullable=False
     )
 
+    logo_url: Mapped[str | None] = mapped_column(
+        String(500),
+        nullable=True
+    )
+
     website: Mapped[str | None] = mapped_column(
         String(255),
         nullable=True

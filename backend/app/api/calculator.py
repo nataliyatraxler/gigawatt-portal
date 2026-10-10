@@ -12,6 +12,13 @@ from app.calculator.gas_network_costs import (
     calculate_gas_network_usage_costs,
     convert_gas_m3_to_kwh,
 )
+from app.calculator.regulatory_charges import (
+    calculate_gas_regulatory_charges,
+)
+from app.calculator.usage_fees import (
+    calculate_usage_fee,
+    get_usage_fee_rule,
+)
 from app.database.session import get_db
 from app.models.commission import Commission
 from app.models.user import User, UserRole
@@ -151,17 +158,79 @@ def calculate_network_costs(
             network_operator_id=request.network_operator_id,
             consumption_kwh=consumption_kwh,
             network_level=request.network_level,
+            customer_type=request.customer_type,
+            meter_type=request.meter_type,
         )
+
+        if request.gas_conversion_factor_kwh_m3 is None:
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    "Für die Berechnung der Erdgasabgabe ist der "
+                    "Umrechnungsfaktor kWh/m³ erforderlich."
+                ),
+            )
+
+        gas_conversion_factor = Decimal(
+            str(request.gas_conversion_factor_kwh_m3)
+        )
+
+        regulatory = calculate_gas_regulatory_charges(
+            db,
+            calculation_date=request.calculation_date,
+            consumption_kwh=consumption_kwh,
+            conversion_factor_kwh_m3=gas_conversion_factor,
+        )
+
+        usage_fee_rule = get_usage_fee_rule(
+            db,
+            calculation_date=request.calculation_date,
+            network_operator_id=request.network_operator_id,
+            gkz=None,
+            energy_type="gas",
+        )
+
+        usage_fee = calculate_usage_fee(
+            usage_fee_rule,
+            consumption_kwh=consumption_kwh,
+            energy_cost=Decimal("0"),
+            network_tariff=network["network_usage_subtotal"],
+            metering_cost=network["metering_fee"],
+        )
+
+        net_total = (
+            network["network_usage_subtotal"]
+            + regulatory["total_charges"]
+            + usage_fee
+        )
+
+        vat_rate = Decimal("20")
+        vat = (
+            net_total * vat_rate / Decimal("100")
+        ).quantize(Decimal("0.01"))
+
+        gross_total = (
+            net_total + vat
+        ).quantize(Decimal("0.01"))
 
         return {
             "energy_type": "gas",
-            "calculation_status": "network_usage_only",
+            "calculation_status": "complete",
             "consumption_m3": request.consumption_m3,
-            "gas_conversion_factor_kwh_m3": (
-                request.gas_conversion_factor_kwh_m3
-            ),
+            "gas_conversion_factor_kwh_m3": gas_conversion_factor,
             "consumption_kwh": consumption_kwh,
             "network": network,
+            "regulatory_charges": regulatory,
+            "usage_fee": usage_fee,
+            "usage_fee_rate_percent": (
+                usage_fee_rule.value
+                if usage_fee_rule is not None
+                else Decimal("0")
+            ),
+            "net_total": net_total,
+            "vat_rate_percent": vat_rate,
+            "vat": vat,
+            "gross_total": gross_total,
         }
 
     if request.consumption_kwh is None:

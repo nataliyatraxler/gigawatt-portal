@@ -1,6 +1,78 @@
 import { useEffect, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 
 function NewContract() {
+    const navigate = useNavigate()
+    const location = useLocation()
+
+    const saveOffer = (tariff) => {
+        navigate('/contracts/offer', {
+            state: {
+                tariff,
+                tariffResults,
+                calculationResult,
+                energyType,
+                customerType,
+                consumption,
+                postalCode: selectedPostalCode?.postal_code || postalCode,
+                city: selectedPostalCode?.city || '',
+                street: selectedStreet?.street_name || street,
+                houseNumber,
+                zpn,
+                networkOperator:
+                    selectedNetworkOperator?.network_operator_name ||
+                    selectedNetworkOperator?.name ||
+                    '',
+            },
+        })
+    }
+
+    useEffect(() => {
+        const saved = location.state?.restoreOffer
+
+        if (!saved) {
+            return
+        }
+
+        setEnergyType(saved.energyType || 'strom')
+        setCustomerType(saved.customerType || 'privat')
+        setConsumption(String(saved.consumption || ''))
+        setPostalCode(saved.postalCode || '')
+        setSelectedPostalCode(
+            saved.postalCode
+                ? {
+                      postal_code: saved.postalCode,
+                      city: saved.city || '',
+                  }
+                : null
+        )
+        setStreet(saved.street || '')
+        setHouseNumber(saved.houseNumber || '')
+        setZpn(saved.zpn || '')
+        setSelectedNetworkOperator(
+            saved.networkOperator
+                ? {
+                      name: saved.networkOperator,
+                      network_operator_name: saved.networkOperator,
+                  }
+                : null
+        )
+        setCalculationResult(saved.calculationResult || null)
+        setTariffResults(
+            saved.tariffResults?.length
+                ? saved.tariffResults
+                : saved.tariff
+                  ? [saved.tariff]
+                  : []
+        )
+        setSelectedTariffResult(saved.tariff || null)
+
+        navigate('/contracts/new', {
+            replace: true,
+            state: null,
+        })
+    }, [location.state, navigate])
+
     const [energyType, setEnergyType] = useState('strom')
     const [customerType, setCustomerType] = useState('privat')
     const [postalCode, setPostalCode] = useState('')
@@ -36,6 +108,8 @@ function NewContract() {
     const [commissionLoading, setCommissionLoading] = useState(false)
     const [commissionError, setCommissionError] = useState('')
     const [networkDetailsOpen, setNetworkDetailsOpen] = useState(false)
+    const [gasDetailsOpen, setGasDetailsOpen] = useState(false)
+    const [gasNetworkDetailsOpen, setGasNetworkDetailsOpen] = useState(false)
     const [tariffDocumentsOpen, setTariffDocumentsOpen] = useState(false)
     const [tariffDocuments, setTariffDocuments] = useState([])
     const [tariffDocumentsLoading, setTariffDocumentsLoading] = useState(false)
@@ -565,6 +639,7 @@ function NewContract() {
                         ...(energyType === 'gas'
                             ? {
                                   consumption_kwh: consumptionValue,
+                                  gas_conversion_factor_kwh_m3: 11.0,
                                   network_level: 3,
                                   tariff_type: 'nicht_leistungsgemessen',
                               }
@@ -1137,102 +1212,693 @@ function NewContract() {
             </div>
 
             {calculationResult && energyType === 'gas' && (
-                <div
-                    className="tariff-calculator-card"
-                    style={{ marginTop: '24px' }}
-                >
-                    <div className="tariff-calculator-header">
-                        <div className="tariff-calculator-icon">€</div>
-
+                <section className="tariff-results-section">
+                    <div className="tariff-results-heading">
                         <div>
-                            <h2>Gas-Netznutzung</h2>
+                            <span className="tariff-results-eyebrow">
+                                NETZKOSTEN
+                            </span>
+
+                            <h2>Gas-Netzkosten</h2>
+
                             <p>
                                 {selectedPostalCode?.postal_code}{' '}
                                 {selectedPostalCode?.city}
                                 {' · '}
                                 {selectedNetworkOperator?.network_operator_name ||
                                     selectedNetworkOperator?.name}
+                                {' · '}
+                                {Number(
+                                    calculationResult.consumption_kwh
+                                ).toLocaleString('de-AT')}{' '}
+                                kWh / Jahr
                             </p>
                         </div>
                     </div>
 
-                    <div className="tariff-form">
-                        <div className="tariff-form-grid">
-                            <div className="form-field">
-                                <label>Jahresverbrauch</label>
-                                <strong>
-                                    {Number(
-                                        calculationResult.consumption_kwh
-                                    ).toLocaleString('de-AT', {
-                                        maximumFractionDigits: 2,
-                                    })}{' '}
-                                    kWh
-                                </strong>
+                    <div className="tariff-results-list">
+                        <article className="supplier-tariff-card">
+                            <div className="supplier-tariff-main">
+                                <div className="supplier-tariff-provider">
+                                    <div className="supplier-logo-placeholder">
+                                        G
+                                    </div>
+
+                                    <div>
+                                        <div className="supplier-name-row">
+                                            <span className="supplier-name">
+                                                GAS
+                                            </span>
+
+                                            <span className="tariff-best-price-badge">
+                                                Netzberechnung
+                                            </span>
+                                        </div>
+
+                                        <h3>
+                                            {selectedNetworkOperator?.network_operator_name ||
+                                                selectedNetworkOperator?.name}
+                                        </h3>
+
+                                        <div className="supplier-tariff-location">
+                                            {selectedPostalCode?.postal_code}{' '}
+                                            {selectedPostalCode?.city}
+                                            <span>•</span>
+                                            Netzebene{' '}
+                                            {calculationResult.network.network_level}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="supplier-tariff-price">
+                                    <span>Gesamtkosten</span>
+
+                                    <strong>
+                                        {formatEuro(
+                                            calculationResult.gross_total
+                                        )}
+                                    </strong>
+
+                                    <small>pro Jahr</small>
+                                </div>
                             </div>
 
-                            <div className="form-field">
-                                <label>Berechneter Verbrauch</label>
-                                <strong>
-                                    {Number(
-                                        calculationResult.consumption_kwh
-                                    ).toLocaleString('de-AT', {
-                                        maximumFractionDigits: 2,
-                                    })}{' '}
-                                    kWh
-                                </strong>
-                            </div>
-
-                            <div className="form-field">
-                                <label>Arbeitspreis</label>
-                                <strong>
-                                    {formatEuro(
-                                        calculationResult.network.work_price
-                                    )}
-                                </strong>
-                            </div>
-
-                            <div className="form-field">
-                                <label>Pauschale pro Jahr</label>
-                                <strong>
-                                    {formatEuro(
-                                        calculationResult.network.base_price
-                                    )}
-                                </strong>
-                            </div>
-                        </div>
-
-                        <div
-                            style={{
-                                marginTop: '24px',
-                                padding: '22px',
-                                borderRadius: '12px',
-                                background: '#f4f7f6',
-                            }}
-                        >
-                            <div
-                                style={{
-                                    fontSize: '14px',
-                                    marginBottom: '6px',
-                                }}
-                            >
-                                Netznutzungsentgelt
-                            </div>
-
-                            <strong style={{ fontSize: '30px' }}>
-                                {formatEuro(
+                            {(() => {
+                                const network = Number(
                                     calculationResult.network
-                                        .network_usage_subtotal
-                                )}
-                            </strong>
-                        </div>
+                                        .network_usage_subtotal || 0
+                                )
 
-                        <p style={{ marginTop: '16px' }}>
-                            Messentgelt, Abgaben und Umsatzsteuer sind
-                            in diesem Zwischenstand noch nicht enthalten.
-                        </p>
+                                const usageFee = Number(
+                                    calculationResult.usage_fee || 0
+                                )
+
+                                const gasTax = Number(
+                                    calculationResult.regulatory_charges
+                                        ?.gas_tax || 0
+                                )
+
+                                const vat = Number(
+                                    calculationResult.vat || 0
+                                )
+
+                                const total =
+                                    network + usageFee + gasTax + vat
+
+                                const networkPct =
+                                    total > 0
+                                        ? (network / total) * 100
+                                        : 0
+
+                                const usageFeePct =
+                                    total > 0
+                                        ? (usageFee / total) * 100
+                                        : 0
+
+                                const gasTaxPct =
+                                    total > 0
+                                        ? (gasTax / total) * 100
+                                        : 0
+
+                                const vatPct =
+                                    total > 0
+                                        ? (vat / total) * 100
+                                        : 0
+
+                                const networkEnd = networkPct
+                                const usageFeeEnd =
+                                    networkEnd + usageFeePct
+                                const gasTaxEnd =
+                                    usageFeeEnd + gasTaxPct
+
+                                return (
+                                    <div className="supplier-tariff-visual">
+                                        <div className="tariff-donut-area">
+                                            <div
+                                                className="tariff-donut"
+                                                style={{
+                                                    background: `conic-gradient(
+                                                        #1769d2 0% ${networkEnd}%,
+                                                        #087443 ${networkEnd}% ${usageFeeEnd}%,
+                                                        #f3b52b ${usageFeeEnd}% ${gasTaxEnd}%,
+                                                        #9aa6ad ${gasTaxEnd}% 100%
+                                                    )`,
+                                                }}
+                                            >
+                                                <div className="tariff-donut-center">
+                                                    <strong>
+                                                        {formatEuro(
+                                                            calculationResult.gross_total
+                                                        )}
+                                                    </strong>
+                                                    <span>pro Jahr</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="tariff-donut-legend">
+                                            <div>
+                                                <span className="tariff-legend-dot tariff-legend-network" />
+                                                <div>
+                                                    <span>
+                                                        Netzentgelte
+                                                    </span>
+                                                    <strong>
+                                                        {formatEuro(
+                                                            network
+                                                        )}{' '}
+                                                        (
+                                                        {Math.round(
+                                                            networkPct
+                                                        )}
+                                                        %)
+                                                    </strong>
+                                                </div>
+                                            </div>
+
+                                            {usageFee > 0 && (
+                                                <div>
+                                                    <span className="tariff-legend-dot tariff-legend-energy" />
+                                                    <div>
+                                                        <span>
+                                                            Gebrauchsabgabe
+                                                        </span>
+                                                        <strong>
+                                                            {formatEuro(
+                                                                usageFee
+                                                            )}{' '}
+                                                            (
+                                                            {Math.round(
+                                                                usageFeePct
+                                                            )}
+                                                            %)
+                                                        </strong>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            <div>
+                                                <span className="tariff-legend-dot tariff-legend-taxes" />
+                                                <div>
+                                                    <span>
+                                                        Erdgasabgabe
+                                                    </span>
+                                                    <strong>
+                                                        {formatEuro(
+                                                            gasTax
+                                                        )}{' '}
+                                                        (
+                                                        {Math.round(
+                                                            gasTaxPct
+                                                        )}
+                                                        %)
+                                                    </strong>
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <span className="tariff-legend-dot tariff-legend-base" />
+                                                <div>
+                                                    <span>
+                                                        USt.
+                                                    </span>
+                                                    <strong>
+                                                        {formatEuro(
+                                                            vat
+                                                        )}{' '}
+                                                        (
+                                                        {Math.round(
+                                                            vatPct
+                                                        )}
+                                                        %)
+                                                    </strong>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="tariff-reference-offer">
+                                            <div className="tariff-reference-price">
+                                                <span>🔥</span>
+
+                                                <strong>
+                                                    {Number(
+                                                        calculationResult
+                                                            .gas_conversion_factor_kwh_m3
+                                                    ).toLocaleString(
+                                                        'de-AT',
+                                                        {
+                                                            minimumFractionDigits: 1,
+                                                            maximumFractionDigits: 3,
+                                                        }
+                                                    )}{' '}
+                                                    kWh/m³
+                                                </strong>
+                                            </div>
+
+                                            <div className="tariff-reference-feature">
+                                                <span>✓</span>
+                                                Netzbetreiber ermittelt
+                                            </div>
+
+                                            <div className="tariff-reference-feature">
+                                                <span>✓</span>
+                                                Netzentgelte berücksichtigt
+                                            </div>
+
+                                            <div className="tariff-reference-feature">
+                                                <span>✓</span>
+                                                Abgaben und USt. berücksichtigt
+                                            </div>
+                                        </div>
+                                    </div>
+                                )
+                            })()}
+
+                            <div className="supplier-tariff-footer">
+                                <div className="supplier-tariff-features">
+                                    <span>✓ Netzberechnung</span>
+                                    <span>
+                                        ✓ Kosten transparent aufgeschlüsselt
+                                    </span>
+                                </div>
+
+                                <div className="supplier-tariff-actions">
+                                    <button
+                                        type="button"
+                                        className="tariff-details-button"
+                                        onClick={() => {
+                                            setGasDetailsOpen(true)
+                                            setGasNetworkDetailsOpen(false)
+                                        }}
+                                    >
+                                        Alle Details anzeigen
+                                        <span>→</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </article>
                     </div>
-                </div>
+                </section>
             )}
+
+            {gasDetailsOpen &&
+                calculationResult &&
+                energyType === 'gas' && (
+                    <>
+                        <div
+                            className="tariff-detail-backdrop"
+                            onClick={() => setGasDetailsOpen(false)}
+                        />
+
+                        <aside className="tariff-detail-drawer">
+                            <div className="tariff-detail-topbar">
+                                <button
+                                    type="button"
+                                    className="tariff-detail-back"
+                                    onClick={() => setGasDetailsOpen(false)}
+                                >
+                                    ← Zurück zur Übersicht
+                                </button>
+
+                                <button
+                                    type="button"
+                                    className="tariff-detail-close"
+                                    onClick={() => setGasDetailsOpen(false)}
+                                    aria-label="Gasdetails schließen"
+                                >
+                                    ×
+                                </button>
+                            </div>
+
+                            <div className="tariff-detail-header">
+                                <div>
+                                    <div className="tariff-detail-provider-name">
+                                        GAS
+                                    </div>
+
+                                    <div className="tariff-detail-title-row">
+                                        <h2>Gas-Netzkosten</h2>
+
+                                        <span className="tariff-detail-tip">
+                                            🔥 Netzberechnung
+                                        </span>
+                                    </div>
+
+                                    <div className="tariff-detail-location">
+                                        {selectedPostalCode?.postal_code}{' '}
+                                        {selectedPostalCode?.city}
+                                        {' · '}
+                                        {selectedNetworkOperator?.network_operator_name ||
+                                            selectedNetworkOperator?.name}
+                                    </div>
+                                </div>
+
+                                <div className="tariff-detail-price">
+                                    <strong>
+                                        {formatEuro(
+                                            calculationResult.gross_total
+                                        )}
+                                    </strong>
+
+                                    <span>pro Jahr</span>
+
+                                    <small>
+                                        bei{' '}
+                                        {Number(
+                                            calculationResult.consumption_kwh
+                                        ).toLocaleString('de-AT')}{' '}
+                                        kWh
+                                    </small>
+                                </div>
+                            </div>
+
+                            <div className="tariff-detail-tabs">
+                                <button type="button" className="active">
+                                    Übersicht
+                                </button>
+                            </div>
+
+                            <div className="tariff-detail-scroll">
+                                {(() => {
+                                    const network = Number(
+                                        calculationResult.network
+                                            .network_usage_subtotal || 0
+                                    )
+                                    const usageFee = Number(
+                                        calculationResult.usage_fee || 0
+                                    )
+                                    const gasTax = Number(
+                                        calculationResult.regulatory_charges
+                                            ?.gas_tax || 0
+                                    )
+                                    const vat = Number(
+                                        calculationResult.vat || 0
+                                    )
+
+                                    const total =
+                                        network + usageFee + gasTax + vat
+
+                                    const networkPct =
+                                        total > 0
+                                            ? (network / total) * 100
+                                            : 0
+                                    const usageFeePct =
+                                        total > 0
+                                            ? (usageFee / total) * 100
+                                            : 0
+                                    const gasTaxPct =
+                                        total > 0
+                                            ? (gasTax / total) * 100
+                                            : 0
+                                    const vatPct =
+                                        total > 0
+                                            ? (vat / total) * 100
+                                            : 0
+
+                                    const networkEnd = networkPct
+                                    const usageFeeEnd =
+                                        networkEnd + usageFeePct
+                                    const gasTaxEnd =
+                                        usageFeeEnd + gasTaxPct
+
+                                    return (
+                                        <section className="tariff-overview-card">
+                                            <div
+                                                className="tariff-overview-donut"
+                                                style={{
+                                                    background: `conic-gradient(
+                                                        #1769d2 0% ${networkEnd}%,
+                                                        #087443 ${networkEnd}% ${usageFeeEnd}%,
+                                                        #f3b52b ${usageFeeEnd}% ${gasTaxEnd}%,
+                                                        #9aa6ad ${gasTaxEnd}% 100%
+                                                    )`,
+                                                }}
+                                            >
+                                                <div className="tariff-overview-donut-hole">
+                                                    <strong>
+                                                        {formatEuro(
+                                                            calculationResult.gross_total
+                                                        )}
+                                                    </strong>
+                                                    <span>pro Jahr</span>
+                                                </div>
+                                            </div>
+
+                                            <div className="tariff-overview-legend">
+                                                <button
+                                                    type="button"
+                                                    className="tariff-overview-network-row"
+                                                    onClick={() =>
+                                                        setGasNetworkDetailsOpen(
+                                                            (value) => !value
+                                                        )
+                                                    }
+                                                >
+                                                    <span className="tariff-overview-dot network" />
+                                                    <span>Netzentgelte</span>
+                                                    <strong>
+                                                        {formatEuro(network)}
+                                                    </strong>
+                                                    <small>
+                                                        ({Math.round(networkPct)}%){' '}
+                                                        {gasNetworkDetailsOpen
+                                                            ? '▲'
+                                                            : '▼'}
+                                                    </small>
+                                                </button>
+
+                                                {usageFee > 0 && (
+                                                    <div>
+                                                        <span className="tariff-overview-dot energy" />
+                                                        <span>
+                                                            Gebrauchsabgabe
+                                                        </span>
+                                                        <strong>
+                                                            {formatEuro(
+                                                                usageFee
+                                                            )}
+                                                        </strong>
+                                                        <small>
+                                                            (
+                                                            {Math.round(
+                                                                usageFeePct
+                                                            )}
+                                                            %)
+                                                        </small>
+                                                    </div>
+                                                )}
+
+                                                <div>
+                                                    <span className="tariff-overview-dot taxes" />
+                                                    <span>
+                                                        Erdgasabgabe
+                                                    </span>
+                                                    <strong>
+                                                        {formatEuro(gasTax)}
+                                                    </strong>
+                                                    <small>
+                                                        ({Math.round(gasTaxPct)}%)
+                                                    </small>
+                                                </div>
+
+                                                <div>
+                                                    <span className="tariff-overview-dot base" />
+                                                    <span>USt.</span>
+                                                    <strong>
+                                                        {formatEuro(vat)}
+                                                    </strong>
+                                                    <small>
+                                                        ({Math.round(vatPct)}%)
+                                                    </small>
+                                                </div>
+                                            </div>
+                                        </section>
+                                    )
+                                })()}
+
+                                {gasNetworkDetailsOpen && (
+                                    <section className="tariff-network-details">
+                                        <div className="tariff-network-details-head">
+                                            <div>
+                                                <strong>
+                                                    Netzentgelte im Detail
+                                                </strong>
+                                                <span>
+                                                    {selectedNetworkOperator?.network_operator_name ||
+                                                        selectedNetworkOperator?.name}
+                                                </span>
+                                            </div>
+
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    setGasNetworkDetailsOpen(false)
+                                                }
+                                                aria-label="Netzentgelte schließen"
+                                            >
+                                                ×
+                                            </button>
+                                        </div>
+
+                                        <div className="tariff-network-detail-row">
+                                            <span>Arbeitspreis Netz</span>
+                                            <strong>
+                                                {formatEuro(
+                                                    calculationResult.network
+                                                        .work_price
+                                                )}
+                                            </strong>
+                                        </div>
+
+                                        <div className="tariff-network-detail-row">
+                                            <span>Pauschale pro Jahr</span>
+                                            <strong>
+                                                {formatEuro(
+                                                    calculationResult.network
+                                                        .base_price
+                                                )}
+                                            </strong>
+                                        </div>
+
+                                        <div className="tariff-network-detail-row">
+                                            <span>Messentgelt</span>
+                                            <strong>
+                                                {formatEuro(
+                                                    calculationResult.network
+                                                        .metering_fee
+                                                )}
+                                            </strong>
+                                        </div>
+
+                                        <div className="tariff-network-detail-row total">
+                                            <span>Netzentgelte gesamt</span>
+                                            <strong>
+                                                {formatEuro(
+                                                    calculationResult.network
+                                                        .network_usage_subtotal
+                                                )}
+                                            </strong>
+                                        </div>
+                                    </section>
+                                )}
+
+                                <section className="tariff-network-details">
+                                    <div className="tariff-network-details-head">
+                                        <div>
+                                            <strong>
+                                                Abgaben &amp; Steuern
+                                            </strong>
+                                            <span>
+                                                Gas ·{' '}
+                                                {Number(
+                                                    calculationResult.consumption_kwh
+                                                ).toLocaleString('de-AT')}{' '}
+                                                kWh
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {Number(calculationResult.usage_fee) >
+                                        0 && (
+                                        <div className="tariff-network-detail-row">
+                                            <span>
+                                                Gebrauchsabgabe (
+                                                {Number(
+                                                    calculationResult
+                                                        .usage_fee_rate_percent
+                                                ).toLocaleString('de-AT')}{' '}
+                                                %)
+                                            </span>
+                                            <strong>
+                                                {formatEuro(
+                                                    calculationResult.usage_fee
+                                                )}
+                                            </strong>
+                                        </div>
+                                    )}
+
+                                    <div className="tariff-network-detail-row">
+                                        <span>Erdgasabgabe</span>
+                                        <strong>
+                                            {formatEuro(
+                                                calculationResult
+                                                    .regulatory_charges
+                                                    .gas_tax
+                                            )}
+                                        </strong>
+                                    </div>
+
+                                    <div className="tariff-network-detail-row">
+                                        <span>
+                                            USt.{' '}
+                                            {Number(
+                                                calculationResult.vat_rate_percent
+                                            ).toLocaleString('de-AT')}{' '}
+                                            %
+                                        </span>
+                                        <strong>
+                                            {formatEuro(
+                                                calculationResult.vat
+                                            )}
+                                        </strong>
+                                    </div>
+
+                                    <div className="tariff-network-detail-row total">
+                                        <span>Gesamt inkl. USt.</span>
+                                        <strong>
+                                            {formatEuro(
+                                                calculationResult.gross_total
+                                            )}
+                                        </strong>
+                                    </div>
+                                </section>
+
+                                <section className="tariff-network-details">
+                                    <div className="tariff-network-details-head">
+                                        <div>
+                                            <strong>
+                                                Berechnungsgrundlage
+                                            </strong>
+                                        </div>
+                                    </div>
+
+                                    <div className="tariff-network-detail-row">
+                                        <span>Jahresverbrauch</span>
+                                        <strong>
+                                            {Number(
+                                                calculationResult.consumption_kwh
+                                            ).toLocaleString('de-AT')}{' '}
+                                            kWh
+                                        </strong>
+                                    </div>
+
+                                    <div className="tariff-network-detail-row">
+                                        <span>Brennwert</span>
+                                        <strong>
+                                            {Number(
+                                                calculationResult
+                                                    .gas_conversion_factor_kwh_m3
+                                            ).toLocaleString('de-AT', {
+                                                minimumFractionDigits: 1,
+                                                maximumFractionDigits: 3,
+                                            })}{' '}
+                                            kWh/m³
+                                        </strong>
+                                    </div>
+
+                                    <div className="tariff-network-detail-row">
+                                        <span>Netto</span>
+                                        <strong>
+                                            {formatEuro(
+                                                calculationResult.net_total
+                                            )}
+                                        </strong>
+                                    </div>
+                                </section>
+                            </div>
+                        </aside>
+                    </>
+                )}
 
             {tariffResults.length > 0 && energyType === 'strom' && (
                 <section className="tariff-results-section">
@@ -1497,8 +2163,11 @@ function NewContract() {
                                                 <button
                                                     type="button"
                                                     className="tariff-offer-button tariff-reference-offer-button"
+                                                    onClick={() =>
+                                                        saveOffer(selectedTariffResult)
+                                                    }
                                                 >
-                                                    Zum Angebot
+                                                    Zum Auftrag
                                                     <span>→</span>
                                                 </button>
                                             </div>
@@ -1531,8 +2200,9 @@ function NewContract() {
                                         <button
                                             type="button"
                                             className="tariff-offer-button"
+                                            onClick={() => saveOffer(tariff)}
                                         >
-                                            Zum Angebot
+                                            Zum Auftrag
                                             <span>→</span>
                                         </button>
                                     </div>
@@ -1870,7 +2540,27 @@ function NewContract() {
 
                                 <div className="tariff-reference-middle">
                                     <section className="tariff-reference-highlights">
-                                        <h3>🌿 Tarif-Highlights</h3>
+                                        <h3>
+                                            <svg
+                                                className="tariff-heading-icon tariff-leaf-icon"
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                aria-hidden="true"
+                                            >
+                                                <path
+                                                    d="M20.5 3.5C13.8 3.7 8.1 5.8 5.4 10.1C3.7 12.8 4.1 15.7 5.8 17.6C8.1 15 11.2 12.8 15.1 11.2C11.8 13.2 9.1 15.6 7.2 18.5C9.3 19.4 11.8 19 13.8 17.5C17.7 14.5 19.6 9.2 20.5 3.5Z"
+                                                    fill="currentColor"
+                                                />
+                                                <path
+                                                    d="M4 21C5.8 17.3 8.8 14.1 13.5 11.5"
+                                                    stroke="currentColor"
+                                                    strokeWidth="1.8"
+                                                    strokeLinecap="round"
+                                                />
+                                            </svg>
+                                            <span>Tarif-Highlights</span>
+                                        </h3>
 
                                         <div>
                                             <span>✓</span>
@@ -1891,7 +2581,37 @@ function NewContract() {
 
                                     <section className="tariff-provision-card">
                                         <div className="tariff-provision-reference-title">
-                                            <span>◉</span>
+                                            <span className="tariff-coins-icon">
+                                                <svg
+                                                    viewBox="0 0 24 24"
+                                                    fill="none"
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                    aria-hidden="true"
+                                                >
+                                                    <ellipse
+                                                        cx="12"
+                                                        cy="5.5"
+                                                        rx="7"
+                                                        ry="3"
+                                                        fill="currentColor"
+                                                    />
+                                                    <path
+                                                        d="M5 5.5V9C5 10.7 8.1 12 12 12C15.9 12 19 10.7 19 9V5.5"
+                                                        stroke="currentColor"
+                                                        strokeWidth="2"
+                                                    />
+                                                    <path
+                                                        d="M5 9V12.5C5 14.2 8.1 15.5 12 15.5C15.9 15.5 19 14.2 19 12.5V9"
+                                                        stroke="currentColor"
+                                                        strokeWidth="2"
+                                                    />
+                                                    <path
+                                                        d="M5 12.5V16C5 17.7 8.1 19 12 19C15.9 19 19 17.7 19 16V12.5"
+                                                        stroke="currentColor"
+                                                        strokeWidth="2"
+                                                    />
+                                                </svg>
+                                            </span>
                                             <strong>
                                                 Provisionen anzeigen
                                             </strong>
@@ -2260,8 +2980,11 @@ function NewContract() {
                                 <button
                                     type="button"
                                     className="tariff-offer-button"
+                                    onClick={() =>
+                                        saveOffer(selectedTariffResult)
+                                    }
                                 >
-                                    Zum Angebot
+                                    Zum Auftrag
                                     <span>→</span>
                                 </button>
                             </div>

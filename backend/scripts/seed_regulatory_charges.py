@@ -6,6 +6,17 @@ from app.models.regulatory_charge import RegulatoryCharge
 
 
 CHARGES = [
+    {
+        "name": "Erdgasabgabe",
+        "calculation_type": "cent_per_nm3",
+        "value": Decimal("6.600"),
+        "network_level": None,
+        "tariff_type": None,
+        "network_area": None,
+        "customer_type": None,
+        "valid_from": date(2026, 1, 1),
+        "valid_to": date(2026, 12, 31),
+    },
         {
         "name": "Elektrizitätsabgabe",
         "calculation_type": "cent_per_kwh",
